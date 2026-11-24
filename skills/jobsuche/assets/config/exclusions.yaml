@@ -1,0 +1,21 @@
+# 01_Config/exclusions.yaml – was nie vorgeschlagen wird. Ergänzt title_exclude im Suchprofil.
+
+companies: []                      # Arbeitgeber, die nie vorgeschlagen werden (Name wie in der Anzeige)
+# - Muster GmbH                    # Beispiel: aktueller oder früherer Arbeitgeber
+
+title_terms: []                    # weitere Titelteile (klein), die eine Stelle sofort ausschließen
+# - vertrieb
+# - sales
+
+hard_blockers:                     # Muss-Anforderungen, die eine Bewerbung ausschließen (Empfehlung SKIP, Note höchstens 7,4)
+  - "Staatsbürgerschaft, die nicht vorliegt, als Pflicht"
+  - "bestehende Sicherheitsüberprüfung als Pflicht"
+  - "Pflichtsprache auf verhandlungssicherem Niveau, die im Profil nicht belegt ist"
+  - "Pflichtabschluss oder Zulassung, die im Profil nicht belegt ist"
+  # - "<EIGENER AUSSCHLUSSGRUND>"
+
+never:                             # Regeln, die für jeden Lauf gelten
+  - "Bewerbung ohne ausdrückliche Freigabe absenden"
+  - "Angaben erfinden, die nicht in candidate_profile.md stehen"
+  - "Gehalt, Visum oder Umzugshilfe schätzen oder ableiten"
+  - "Portale abrufen, die das untersagen (LinkedIn, XING): nur ihre Alert-Mails lesen"

@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.gstack/
+.DS_Store
+BUILD_RULES.md

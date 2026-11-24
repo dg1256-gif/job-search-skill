@@ -1,0 +1,45 @@
+# 01_Config/salary_rules.yaml – Gehaltsziele und wie Gehaltsangaben in die Note eingehen.
+# Gehälter werden nie geschätzt: nur eine Zahl aus der Anzeige (VERIFIED) oder ein belegter Hinweis
+# (LIKELY mit Quelle) zählt. Alle Beträge sind Bruttojahresgehälter.
+
+targets: {}                        # Mindestgehalt je Land (ISO-Kürzel); fehlt ein Land, gilt `default`
+# Beispiel:
+# targets:
+#   DE: {currency: EUR, min: 60000}
+#   CH: {currency: CHF, min: 95000, note: "höhere Lebenshaltungskosten"}
+#   SE: {currency: SEK, min: 650000, salary_required: true}   # salary_required: ohne belegtes Gehalt höchstens 7,9
+
+default:                           # gilt für jedes Land ohne eigenen Eintrag
+  currency: EUR                    # Währung des Ziels (muss in fx_to_eur stehen)
+  min: "<MINDESTGEHALT BRUTTO PRO JAHR>"   # Zahl ohne Punkt und Währung, z. B. 60000
+
+relocation_min:                    # optional: Mindestgehalt, ab dem ein Umzug in Frage kommt (Hinweis für die Bewertung)
+  currency: EUR
+  min: 0
+  note: ""
+
+hours_per_year: 1976               # Umrechnung von Stundensätzen in ein Jahresgehalt (38 h x 52 Wochen)
+days_per_year: 230                 # Umrechnung von Tagessätzen in ein Jahresgehalt
+
+fx_to_eur:                         # grobe Umrechnungskurse in Euro, nur für den Vergleich mit dem Ziel; bei Bedarf anpassen
+  EUR: 1.0
+  CHF: 1.05
+  USD: 0.92
+  GBP: 1.17
+  CAD: 0.67
+  AUD: 0.60
+  PLN: 0.23
+  DKK: 0.134
+  SEK: 0.088
+  NOK: 0.086
+  CNY: 0.13
+
+compensation_score:                # Teilnote "compensation" je Gehaltsstatus
+  VERIFIED_meets: [8.0, 10.0]      # Gehalt in der Anzeige erreicht das Ziel: 8,0 (genau) bis 10,0 (30 % darüber)
+  LIKELY: 7.0                      # nicht ausgeschrieben, aber belegter Hinweis, dass das Ziel erreicht wird
+  UNKNOWN: 5.5                     # keine Angabe (nur wirksam, wenn unknown_neutral false ist)
+  BELOW_TARGET: 2.0                # ausgeschriebenes Gehalt liegt unter dem Ziel
+
+unknown_neutral: true              # true = fehlende Gehaltsangabe zählt weder als Plus noch als Minus
+below_target_tolerance: 0.95       # die Obergrenze der Spanne darf bis 5 % unter dem Ziel liegen
+score_cap_below_target: 7.9        # höchste Gesamtnote einer Stelle unter dem Gehaltsziel (keine APPLY-Empfehlung)

@@ -1,0 +1,1159 @@
+<title>Jobsuche Cockpit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one dense, scannable list. Score block left, facts in the middle, actions right;
+   status tabs on top like the stages of a release board. */
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --sunken: #e8ecf0; --line: #d3dae1;
+  --fg: #17212b; --muted: #5b6875; --accent: #0b5d7a; --accent-fg: #ffffff; --accent-soft: #dcecf2;
+  --good: #1f7a4d; --good-soft: #dff1e7; --warn: #8a5a00; --warn-soft: #f7ecd2;
+  --bad: #a3312b; --bad-soft: #f7e0de;
+  /* Serif headlines, sans-serif text; system fonts step in when the web fonts do not load. */
+  --display: "Crimson Pro", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: var(--body);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10161c; --surface: #18212a; --sunken: #212c37; --line: #2f3c49;
+    --fg: #e6ecf1; --muted: #98a6b3; --accent: #5cb8d6; --accent-fg: #07222d; --accent-soft: #1b3a47;
+    --good: #6fcf9b; --good-soft: #173527; --warn: #e3b55a; --warn-soft: #3a2f14;
+    --bad: #f0908a; --bad-soft: #40201e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10161c; --surface: #18212a; --sunken: #212c37; --line: #2f3c49;
+  --fg: #e6ecf1; --muted: #98a6b3; --accent: #5cb8d6; --accent-fg: #07222d; --accent-soft: #1b3a47;
+  --good: #6fcf9b; --good-soft: #173527; --warn: #e3b55a; --warn-soft: #3a2f14;
+  --bad: #f0908a; --bad-soft: #40201e; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 2rem; letter-spacing: 0; margin: 0; text-wrap: balance; }
+.top { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; justify-content: space-between; }
+.sub { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.head { display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: baseline; }
+.runbox { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; min-width: 0; }
+.runbox[hidden] { display: none !important; }
+.runbox .btn { padding: 8px 14px; }
+.runbox .sub { overflow-wrap: anywhere; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+#rules { display: contents; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 5; padding-top: 6px; }
+.tab { font: 600 0.9rem var(--body); color: var(--muted); background: none; border: 0; border-bottom: 3px solid transparent; padding: 9px 12px; cursor: pointer; white-space: nowrap; display: flex; gap: 7px; align-items: center; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tab .n { font: 500 0.75rem var(--mono); background: var(--sunken); color: var(--fg); border-radius: 9px; padding: 1px 7px; }
+.tab[aria-selected="true"] .n { background: var(--accent); color: var(--accent-fg); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters input, .filters select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; min-width: 0; }
+.filters input { flex: 1 1 200px; }
+.filters .count { margin-left: auto; color: var(--muted); font-size: 0.85rem; }
+.segs { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg { font: 500 0.82rem var(--body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 11px; cursor: pointer; display: flex; gap: 6px; align-items: center; }
+.seg:hover { border-color: var(--accent); }
+.seg[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.seg .n { font: 500 0.72rem var(--mono); color: var(--muted); }
+.seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#list { display: flex; flex-direction: column; gap: 10px; }
+.job { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; display: grid; grid-template-columns: 88px minmax(0, 1fr) 190px; }
+.score { border-right: 1px solid var(--line); padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.score b { font: 600 1.65rem var(--mono); font-variant-numeric: tabular-nums; line-height: 1; }
+.score span { font: 600 0.62rem var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.score .chance { margin-top: 4px; color: var(--ink); text-transform: none; letter-spacing: 0; font-size: 0.7rem; }
+ul.must { list-style: none; margin: 4px 0 10px; padding: 0; display: grid; gap: 4px; font-size: 0.85rem; }
+ul.must .chip { margin-right: 6px; }
+.score.s9 b, .score.s85 b { color: var(--good); }
+.score.s8 b { color: var(--accent); }
+.main { padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.co { font: 600 0.78rem var(--body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.title { font-family: var(--display); font-weight: 600; font-size: 1.25rem; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 5px 6px; }
+.chip { font: 500 0.74rem var(--mono); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; color: var(--muted); background: var(--bg); }
+.chip.good { color: var(--good); background: var(--good-soft); border-color: transparent; }
+.chip.warn { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+.chip.bad { color: var(--bad); background: var(--bad-soft); border-color: transparent; }
+.chip.acc { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+.fit { margin: 0; max-width: 68ch; }
+.fit i { font-style: normal; font-weight: 600; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; margin-right: 6px; }
+details { border-top: 1px dashed var(--line); padding-top: 7px; }
+summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.85rem; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 20px; margin-top: 9px; }
+.grid2 h4 { font: 600 0.72rem var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.grid2 ul { margin: 0; padding-left: 16px; font-size: 0.86rem; }
+.bars { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; gap: 4px 8px; align-items: center; font-size: 0.8rem; }
+.bar { height: 7px; background: var(--sunken); border-radius: 2px; overflow: hidden; }
+.bar u { display: block; height: 100%; background: var(--accent); text-decoration: none; }
+.bars .v { font: 500 0.78rem var(--mono); }
+.note { width: 100%; font: inherit; font-size: 0.86rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; resize: vertical; min-height: 34px; }
+.acts { border-left: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 7px; }
+.btn { font: 600 0.84rem var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 4px; padding: 7px 9px; cursor: pointer; text-align: center; text-decoration: none; display: block; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn.primary:hover { filter: brightness(1.08); color: var(--accent-fg); }
+.btn.quiet { border-color: transparent; color: var(--muted); font-weight: 500; padding: 4px 9px; }
+.btn:focus-visible, .tab:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 4px; padding: 28px 20px; color: var(--muted); text-align: center; }
+.empty strong { display: block; color: var(--fg); font-family: var(--display); font-size: 1.05rem; margin-bottom: 4px; }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); border-radius: 4px; padding: 9px 14px; display: flex; gap: 14px; align-items: center; font-size: 0.9rem; max-width: calc(100% - 32px); z-index: 20; }
+#toast button { font: 600 0.85rem var(--body); background: none; border: 0; color: inherit; text-decoration: underline; cursor: pointer; }
+.rule { color: var(--muted); font-size: 0.82rem; margin: 0; }
+.apply { border: 1px solid var(--accent); border-radius: 4px; background: var(--accent-soft); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.apply h3 { font: 600 0.9rem var(--body); margin: 0; color: var(--accent); }
+.apply label { display: flex; gap: 8px; align-items: flex-start; font-size: 0.86rem; }
+.apply input[type="text"], .apply textarea { font: inherit; font-size: 0.86rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; width: 100%; }
+.apply .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.apply .hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
+.apply .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.reqbox { border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 8px 10px; font-size: 0.88rem; }
+.reqbox b { color: var(--accent); }
+.reqbox.ready { border-left-color: var(--warn); background: var(--warn-soft); }
+.reqbox.ready b { color: var(--warn); }
+.editor { border: 1px solid var(--line); border-radius: 4px; background: var(--surface); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.editor h3 { font: 600 0.9rem var(--body); margin: 0; }
+.editor label { font: 600 0.72rem var(--body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.editor input, .editor textarea { font: inherit; font-size: 0.92rem; line-height: 1.5; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; width: 100%; }
+.editor textarea { resize: none; overflow: hidden; min-height: 60px; }
+.editor .para { display: flex; flex-direction: column; gap: 3px; }
+.editor .para .btn { align-self: flex-end; }
+.editor .checks { display: flex; flex-wrap: wrap; gap: 5px 6px; }
+.editor .fixed { color: var(--muted); font-size: 0.86rem; margin: 0; }
+.editor .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stats { display: flex; flex-direction: column; gap: 18px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; }
+.tile b { display: block; font: 600 1.7rem var(--display); line-height: 1.1; }
+.tile span { color: var(--muted); font-size: 0.82rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; position: relative; overflow-x: auto; min-width: 0; }
+.panel h3 { font: 600 0.95rem var(--body); margin: 0 0 8px; }
+.panel .hint { color: var(--muted); font-size: 0.8rem; margin: 6px 0 0; }
+.weekchart { width: 100%; height: 190px; display: block; }
+.weekchart .axis { stroke: var(--line); stroke-width: 1; }
+.weekchart text { fill: var(--muted); font: 500 10px var(--body); }
+.weekchart .wbar { fill: var(--accent); }
+.weekchart .hit { fill: transparent; cursor: default; }
+.weekchart .wbar.on { opacity: 0.75; }
+.filters[hidden], .segs[hidden] { display: none !important; }
+.charttip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; white-space: nowrap; transform: translate(-50%, -110%); }
+.stattable { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.stattable th, .stattable td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.stattable th:first-child, .stattable td:first-child { text-align: left; }
+.stattable th { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
+.twocol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 10px; }
+@media (max-width: 760px) {
+  .job { grid-template-columns: 64px minmax(0, 1fr); }
+  .acts { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); flex-direction: row; flex-wrap: wrap; }
+  .acts .btn { flex: 1 1 130px; }
+  .score b { font-size: 1.3rem; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="head"><h1>Jobsuche Cockpit</h1><span class="sub" id="owner" hidden></span></div>
+    <div class="runbox" id="runBox" hidden>
+      <button class="btn primary" id="runBtn" type="button" aria-describedby="runHint"
+        title="Merkt einen Lauf der Jobsuche vor. Der Abholer auf deinem Rechner startet ihn beim nächsten Abholen.">Job suche starten</button>
+      <span class="sr" id="runHint">Merkt einen Lauf der Jobsuche vor. Der Abholer auf deinem Rechner startet ihn beim nächsten Abholen. Es wird kein Text übertragen.</span>
+      <span class="sub" id="runStatus" role="status" aria-live="polite"></span>
+    </div>
+    <p class="sub" id="status">Verbinde mit der Datenbank …</p>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Status der Stellen"></nav>
+  <div class="filters">
+    <input id="q" type="search" placeholder="Suche nach Unternehmen, Rolle, Ort" aria-label="Suche">
+    <select id="country" aria-label="Land"><option value="">Alle Länder</option></select>
+    <select id="sort" aria-label="Sortierung">
+      <option value="score">Beste Passung zuerst</option>
+      <option value="date">Neueste zuerst</option>
+      <option value="company">Unternehmen A–Z</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="segs" id="segs" role="group" aria-label="Segment"></div>
+  <main id="list">
+    <div class="empty"><strong>Noch keine Stellen geladen</strong>Nach dem nächsten Lauf erscheinen hier die neuen Empfehlungen mit Bewerbungslink und Anschreiben.</div>
+  </main>
+  <div id="rules"></div>
+  <p class="rule">„Low Scoring Stellen“ zeigt 30 Tage lang alle Stellen, die anhand der Anzeige bewertet wurden und unter 7,0 Punkten lagen – mit Punkten und Hauptgrund. Was du übernimmst, wandert nach „Neu“ oder auf die Merkliste.</p>
+  <p class="rule">Nicht mehr verfügbare Stellen erscheinen nirgends – außer du hast dich darauf beworben. Der tägliche Lauf prüft jede Anzeige und liest Antworten der Unternehmen aus deinen Postfächern: Eingangsbestätigung, Einladung, Absage und Zusage verschieben die Stelle automatisch.</p>
+  <p class="rule">„Bewerbung ausfüllen lassen“ merkt einen Auftrag vor: In Claude Code auf deinem Rechner „Bewerbungen ausfüllen“ schreiben – Claude füllt das Formular im sichtbaren Browser aus, du meldest dich an, und abgesendet wird nur, wenn du genau diese Bewerbung im Chat bestätigst. „Als beworben markieren“ verschiebt die Stelle nur in die nächste Ansicht.</p>
+  <p class="rule">„Job suche starten“ merkt einen Lauf vor; der Abholer auf deinem Rechner startet ihn beim nächsten Abholen. Die Schaltfläche überträgt nur die Anfrage, keinen Text.</p>
+</div>
+<div id="toast" hidden><span id="toastText"></span><button id="toastUndo" type="button">Rückgängig</button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// Tabs, portals and segments come from the db document config/ui (written by the export script).
+// That document is data, never markup or code: every value is type-checked, ids must match ID_RE,
+// labels are only ever set via textContent, links must be https, patterns are length-capped.
+const ID_RE = /^[a-z0-9_-]{1,24}$/;
+const TOKEN_RE = /^[A-Za-z0-9]{8,64}$/;
+const FIXED_TABS = ["new", "low", "watch", "applied", "interview", "offer", "declined", "rejected", "all", "stats", "closed", "portal"];
+const DEFAULT_PORTALS = [
+  { id: "linkedin", label: "LinkedIn", search_url: "https://www.linkedin.com/jobs/search/?keywords={q}" },
+  { id: "xing", label: "XING", search_url: "https://www.xing.com/jobs/search?keywords={q}" }
+];
+// one primary segment per job, by what the role does (industry is shown separately)
+const DEFAULT_SEGMENTS = [
+  { id: "program", label: "Programm & Produkt" },
+  { id: "transformation", label: "Transformation & Beratung" }, { id: "ai", label: "AI" }, { id: "other", label: "Sonstige" }
+];
+const DEFAULT_RULES = [   // fallback for entries without a stored segment, checked in this order
+  ["program", /program|programme|project|projekt|\bpmo\b|product|produkt|owner|roadmap|delivery/i],
+  ["transformation", /consult|berat|process|prozess|business (engineer|analyst)|digitali|transformation|strateg/i]
+];
+function cleanLabel(v, fallback, max) { return typeof v === "string" && v.trim() ? v.trim().slice(0, max || 40) : fallback; }
+function hostOf(u) { try { return new URL(u.split("{q}").join("")).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { return ""; } }
+function buildConfig(raw) {
+  raw = raw && typeof raw === "object" ? raw : {};
+  const used = new Set(FIXED_TABS);
+  const portal = (p) => {
+    if (!p || typeof p !== "object" || typeof p.id !== "string" || !ID_RE.test(p.id) || used.has(p.id)) return null;
+    let u = typeof p.search_url === "string" && p.search_url.length <= 300 && /^https:\/\//i.test(p.search_url) ? p.search_url : "";
+    const host = u ? hostOf(u) : "";
+    if (!host) u = "";
+    used.add(p.id);
+    return { id: p.id, label: cleanLabel(p.label, p.id), search_url: u, host };
+  };
+  let portals = (Array.isArray(raw.portals) ? raw.portals.slice(0, 12) : []).map(portal).filter(Boolean);
+  if (!portals.length) portals = DEFAULT_PORTALS.map(portal).filter(Boolean);
+  const segments = DEFAULT_SEGMENTS.map((x) => ({ ...x, own_tab: false }));
+  const rules = [], seen = new Set(), repatterned = new Set();
+  (Array.isArray(raw.segments) ? raw.segments.slice(0, 24) : []).forEach((x) => {
+    if (!x || typeof x !== "object" || typeof x.id !== "string" || !ID_RE.test(x.id) || seen.has(x.id)) return;
+    seen.add(x.id);
+    let sg = segments.find((y) => y.id === x.id);
+    if (sg) sg.label = cleanLabel(x.label, sg.label);
+    else { sg = { id: x.id, label: cleanLabel(x.label, x.id), own_tab: false }; segments.splice(segments.length - 1, 0, sg); }
+    if (x.own_tab === true && !used.has(x.id)) { sg.own_tab = true; used.add(x.id); }
+    if (typeof x.pattern === "string" && x.pattern && x.pattern.length <= 200) {
+      try { rules.push([x.id, new RegExp(x.pattern, "i")]); repatterned.add(x.id); } catch (e) { /* invalid pattern: segment only by stored value */ }
+    }
+  });
+  DEFAULT_RULES.forEach((r) => { if (!repatterned.has(r[0])) rules.push(r); });
+  return { portals, portalById: new Map(portals.map((p) => [p.id, p])), segments, segById: new Map(segments.map((x) => [x.id, x])), rules,
+    owner: cleanLabel(raw.owner_label, "", 60), token: typeof raw.trigger_token === "string" && TOKEN_RE.test(raw.trigger_token) ? raw.trigger_token : "",
+    language: raw.language === "de" || raw.language === "en" ? raw.language : "" };
+}
+let cfg = buildConfig(null);
+// A segment with own_tab gets its own tab (right after "Neu"), every portal one tab for its alert jobs.
+function tabList() {
+  return [{ id: "new", label: "Neu" }, ...cfg.segments.filter((x) => x.own_tab).map((x) => ({ id: x.id, label: x.label, kind: "segment" })),
+    ...cfg.portals.map((p) => ({ id: p.id, label: p.label, kind: "portal" })),
+    { id: "low", label: "Low Scoring Stellen" },
+    { id: "watch", label: "Merkliste" }, { id: "applied", label: "Beworben" },
+    { id: "interview", label: "Im Gespräch" }, { id: "offer", label: "Zusage" }, { id: "declined", label: "Absage" },
+    { id: "rejected", label: "Kein Interesse" }, { id: "all", label: "Alle" }, { id: "stats", label: "Auswertung" }];
+}
+function segmentList() { return [{ id: "", label: "Alle Segmente" }, ...cfg.segments]; }
+// The remembered tab or segment may name one the config no longer has (or has not delivered yet): show the default meanwhile.
+function curTab() { return tabList().some((t) => t.id === state.tab) ? state.tab : "new"; }
+function curSeg() { return cfg.segById.has(state.seg) ? state.seg : ""; }
+function segmentOf(j) {
+  if (typeof j.segment === "string" && j.segment) return cfg.segById.has(j.segment) ? j.segment : "other";
+  if (j.is_ai) return "ai";
+  const hit = cfg.rules.find(([, re]) => re.test(j.title || ""));
+  return hit ? hit[0] : "other";
+}
+function segLabel(j) { return (cfg.segById.get(segmentOf(j)) || {}).label; }
+function ownTabOf(j) { const sg = cfg.segById.get(segmentOf(j)); return sg && sg.own_tab ? sg.id : null; }
+function portalOf(origin) { return typeof origin === "string" ? cfg.portalById.get(origin) || null : null; }
+function portalByUrl(u) {
+  try { const h = new URL(u).hostname.toLowerCase(); return cfg.portals.find((p) => p.host && (h === p.host || h.endsWith("." + p.host))) || null; }
+  catch (e) { return null; }
+}
+const COUNTRY = { DE: "Deutschland", CH: "Schweiz", AT: "Österreich", NL: "Niederlande", DK: "Dänemark", PL: "Polen", SE: "Schweden", CA: "Kanada", AU: "Australien", CN: "China", GB: "UK", US: "USA" };
+const SCORE_LABEL = { fachlich: "Fachlich 30 %", transfer: "Transfer 20 %", senioritaet: "Seniorität 15 %", compensation: "Gehalt 15 %", standort: "Standort 10 %", strategie: "Strategie 10 %" };
+const state = { jobs: new Map(), tab: "new", q: "", country: "", seg: "", sort: "score", db: null, downloads: null, open: new Set(), redraw: false,
+  requests: new Map(), applyOpen: new Set(), letters: new Map(), editOpen: new Set(), drafts: new Map() };
+const LETTER_STATUS = { edited: ["acc", "Änderung gespeichert – „Anschreiben (.docx)“ enthält sie sofort, der nächste Lauf prüft sie"],
+  built: ["good", "übernommen – .docx neu gebaut"], invalid: ["bad", "nicht übernommen – bitte korrigieren"] };
+const BANNED = [/what attracts me/i, /excited to apply/i, /i am excited/i, /passionate about/i, /my passion/i, /innovative company/i,
+  /dynamic environment/i, /perfectly aligns/i, /strongly appeals to me/i, /thrilled/i, /i am writing to apply/i, /fast-paced/i,
+  /team player/i, /proven track record/i, /hit the ground running/i, /weckt mein (großes )?interesse/i, /mit großem interesse/i,
+  /hiermit bewerbe ich mich/i, /dynamisches? (umfeld|unternehmen)/i, /innovatives? unternehmen/i, /leidenschaft/i, /teamplayer/i,
+  /besonders reizt/i, /hochmotiviert/i, /schnelle auffassungsgabe/i];
+const SALUTATION_OK = {   // mirrors scripts/cover_letter.py: title + last name, never first and last name
+  de: /^(Sehr geehrte Frau|Sehr geehrter Herr) (Dr\. |Prof\. (Dr\. )?)?((von|van|de|zu|vom|von der|van der|de la) )?[A-ZÄÖÜ][\p{L}'-]+,$|^Sehr geehrte Damen und Herren,$/u,
+  en: /^Dear (Ms|Mr|Mrs|Dr|Prof)\.? [A-Z][\p{L}'-]+,$|^Dear (Sir or Madam|Hiring Manager|[A-Z][\p{L}&.' -]* (Hiring |Recruiting )?Team),$/u };
+const REQ_LABEL = { requested: ["acc", "Ausfüll-Auftrag vorgemerkt"], in_progress: ["acc", "wird gerade ausgefüllt"],
+  ready: ["warn", "ausgefüllt – wartet auf deine Bestätigung im Chat"], submitted: ["good", "Bewerbung abgesendet"],
+  failed: ["bad", "Ausfüllen abgebrochen"] };
+
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  return n;
+}
+function safeUrl(u) { return typeof u === "string" && /^https:\/\//i.test(u) ? u : null; }
+const BOARDS = ["new", "portal", "low", "watch", "applied", "interview", "offer", "declined", "rejected", "closed"];
+const APPLIED = ["applied", "interview", "offer", "declined"];
+function board(j) { return BOARDS.includes(j.board) ? j.board : "new"; }
+function gone(j) { return j.system_status === "EXPIRED" || j.system_status === "DUPLICATE" || j.open_state === "closed"; }
+// The tab a job is listed in, or null: postings that are no longer online are not shown anywhere,
+// unless the user applied to them. Alert jobs live in the tab of their portal for 21 days.
+// Jobs of a segment with its own tab are kept apart so that a separate search lane does not mix
+// into the main list: new, alert and low-scoring ones all live in that tab; once the user acts on
+// one (Merkliste, Beworben …) it follows the normal status tabs.
+function view(j) {
+  const b = board(j);
+  if (APPLIED.includes(b)) return b;
+  if (gone(j) || b === "closed") return null;
+  const own = ownTabOf(j);
+  if (b === "low") {   // scored below 7.0 from the posting: listed for 30 days
+    const lowAge = (Date.now() - new Date(j.report_date || j.first_seen || Date.now()).getTime()) / 86400000;
+    return lowAge > 30 ? null : own || "low";
+  }
+  if (b !== "portal") return own && b === "new" ? own : b;
+  const age = (Date.now() - new Date(j.first_seen || Date.now()).getTime()) / 86400000;
+  if (age > 21) return null;
+  if (own) return own;
+  return (portalOf(j.origin) || cfg.portals[0]).id;   // unknown origin: first portal
+}
+function daysSince(iso) { return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null; }
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function category(score) {
+  if (score >= 9) return ["s9", "Exceptional"];
+  if (score >= 8.5) return ["s85", "Very strong"];
+  if (score >= 8) return ["s8", "Strong"];
+  if (score < 7.0) return ["s75", "Low Score"];
+  return ["s75", "Watchlist"];
+}
+function salaryChip(j) {
+  const s = j.salary_status || "UNKNOWN";
+  if (s === "VERIFIED") return ["good", j.salary_text || "Gehalt verifiziert"];
+  if (s === "LIKELY") return ["acc", "Gehalt: Ziel wahrscheinlich"];
+  if (s === "BELOW_TARGET") return ["bad", "Unter Gehaltsziel" + (j.salary_text ? ": " + j.salary_text : "")];
+  return ["warn", "Gehalt nicht verifiziert"];
+}
+
+function visible() {
+  const q = state.q.trim().toLowerCase(), tab = curTab(), seg = curSeg();
+  const rows = [...state.jobs.values()].filter((j) => {
+    const v = view(j);
+    if (v === null || (tab !== "all" && v !== tab)) return false;
+    if (state.country && j.country !== state.country) return false;
+    if (seg && segmentOf(j) !== seg) return false;
+    if (q && ![j.company, j.title, j.location, j.industry].join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  });
+  rows.sort((a, b) => state.sort === "company" ? String(a.company).localeCompare(String(b.company))
+    : state.sort === "date" ? String(b.posted_date || b.first_seen || "").localeCompare(String(a.posted_date || a.first_seen || ""))
+    : (b.score || 0) - (a.score || 0));
+  return rows;
+}
+
+function renderTabs() {
+  const counts = {};
+  let shown = 0;
+  for (const j of state.jobs.values()) { const v = view(j); if (v === null) continue; counts[v] = (counts[v] || 0) + 1; shown++; }
+  counts.all = shown;
+  counts.stats = [...state.jobs.values()].filter((j) => APPLIED.includes(board(j))).length;
+  const nav = $("tabs"), tab = curTab();
+  nav.replaceChildren(...tabList().map((t) => {
+    const b = el("button", "tab");
+    b.type = "button"; b.id = "tab-" + t.id; b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(tab === t.id));
+    b.append(el("span", "", t.label), el("span", "n", String(counts[t.id] || 0)));
+    b.addEventListener("click", () => { state.tab = t.id; remember(); render(); });
+    return b;
+  }));
+}
+
+function list(title, items) {
+  const box = el("div");
+  box.append(el("h4", "", title));
+  if (!items || !items.length) { box.append(el("div", "", "–")); return box; }
+  const ul = el("ul");
+  items.forEach((x) => ul.append(el("li", "", String(x))));
+  box.append(ul);
+  return box;
+}
+
+function jobRow(j) {
+  const row = el("article", "job");
+  const prelim = j.score_basis === "alert";
+  const [cls, catLabel] = prelim ? ["s75", "Vorab-Score"] : category(j.score || 0);
+  const score = el("div", "score " + cls);
+  score.append(el("b", "", (j.score || 0).toFixed(1)), el("span", "", catLabel));
+  if (j.stretch) score.append(el("span", "", "Stretch"));
+  if (typeof j.chance === "number") {
+    const ch = el("span", "chance", "Chance " + j.chance.toFixed(1));
+    ch.title = "Anteil der Muss-Anforderungen der Anzeige, die du belegt erfüllst";
+    score.append(ch);
+  }
+
+  const b0 = board(j);
+  const main = el("div", "main");
+  main.append(el("div", "co", j.company || ""), el("h2", "title", j.title || ""));
+  const meta = el("div", "meta");
+  meta.append(el("span", "chip", [j.location, COUNTRY[j.country] || j.country].filter(Boolean).join(" · ")));
+  const sgLabel = segLabel(j);
+  if (sgLabel) meta.append(el("span", "chip", sgLabel));
+  const [sc, st] = salaryChip(j);
+  meta.append(el("span", "chip " + sc, st));
+  if (j.origin === "manual") meta.append(el("span", "chip acc", "von dir eingereicht"));
+  const from = portalOf(j.origin);
+  if (from) meta.append(el("span", "chip acc", "aus " + from.label + (j.alert_name ? ": " + j.alert_name : "")));
+  String(j.seen_on || "").split("|").filter((x) => portalOf(x) && x !== j.origin)
+    .forEach((x) => meta.append(el("span", "chip", "auch auf " + portalOf(x).label)));
+  if (prelim) meta.append(el("span", "chip warn", "Originalanzeige nicht geprüft"));
+  if (j.salary_estimate_xing) meta.append(el("span", "chip", "XING-Schätzung: " + j.salary_estimate_xing));
+  if ((j.other_locations || []).length) meta.append(el("span", "chip", "auch: " + j.other_locations.join(", ")));
+  if (j.remote) meta.append(el("span", "chip", j.remote));
+  if (j.visa) meta.append(el("span", "chip acc", "Visa: " + j.visa));
+  if (j.relocation) meta.append(el("span", "chip acc", "Relocation: " + j.relocation));
+  if (j.posted_date) meta.append(el("span", "chip", "online seit " + fmtDate(j.posted_date)));
+  if (j.is_ai) meta.append(el("span", "chip", "AI-Rolle"));
+  if (j.recommendation && board(j) !== "portal") meta.append(el("span", "chip " + (j.recommendation === "APPLY" ? "good" : ""), j.recommendation));
+  if (j.applied_at) meta.append(el("span", "chip good", "beworben am " + fmtDate(j.applied_at)));
+  if (j.status_note) meta.append(el("span", "chip acc", j.status_note));
+  const lt = state.letters.get(j.key);
+  if (lt && LETTER_STATUS[lt.status]) meta.append(el("span", "chip " + LETTER_STATUS[lt.status][0], "Anschreiben " + LETTER_STATUS[lt.status][1]));
+  const req = state.requests.get(j.key);
+  if (req && REQ_LABEL[req.status]) meta.append(el("span", "chip " + REQ_LABEL[req.status][0],
+    REQ_LABEL[req.status][1] + (req.status_note ? ": " + req.status_note : "")));
+  const age = daysSince(j.open_checked);
+  if (gone(j)) meta.append(el("span", "chip bad", "Anzeige nicht mehr online"));
+  else if (APPLIED.includes(b0)) { /* applied: only "offline" matters */ }
+  else if (j.open_state === "unknown" && !j.open_checked) meta.append(el("span", "chip warn", "Verfügbarkeit nicht prüfbar (nur Portal-Link)"));
+  else if (age === null) meta.append(el("span", "chip warn", "Verfügbarkeit noch nicht geprüft"));
+  else meta.append(el("span", "chip " + (age <= 1 ? "good" : "warn"), "online geprüft " + fmtDate(j.open_checked)));
+  main.append(meta);
+  if (j.why_fit) { const p = el("p", "fit"); p.append(el("i", "", "Passt, weil"), document.createTextNode(j.why_fit)); main.append(p); }
+  if (j.main_gap) { const p = el("p", "fit"); p.append(el("i", "", "Lücke"), document.createTextNode(j.main_gap)); main.append(p); }
+  if (j.skip_reason && b0 === "portal" && j.skip_reason !== j.main_gap) { const p = el("p", "fit"); p.append(el("i", "", "Nicht unter Neu, weil"), document.createTextNode(j.skip_reason)); main.append(p); }
+
+  const det = el("details");
+  det.open = state.open.has(j.key);
+  det.addEventListener("toggle", () => { det.open ? state.open.add(j.key) : state.open.delete(j.key); });
+  det.append(el("summary", "", "Analyse, Skill-Abgleich und Notiz"));
+  const grid = el("div", "grid2");
+  const sb = el("div");
+  sb.append(el("h4", "", "Teil-Scores"));
+  const bars = el("div", "bars");
+  Object.keys(SCORE_LABEL).forEach((k) => {
+    const v = Number((j.scores || {})[k]);
+    if (isNaN(v)) return;
+    const bar = el("div", "bar"); const fill = el("u"); fill.style.width = Math.max(0, Math.min(100, v * 10)) + "%"; bar.append(fill);
+    bars.append(el("span", "", SCORE_LABEL[k]), bar, el("span", "v", v.toFixed(1)));
+  });
+  sb.append(bars);
+  if ((j.must_haves || []).length) {
+    sb.append(el("h4", "", "Muss-Anforderungen" + (typeof j.chance === "number" ? " · Chance " + j.chance.toFixed(1) : "")));
+    const MARK = { met: ["good", "erfüllt"], partial: ["warn", "teilweise"], missing: ["bad", "fehlt"] };
+    const mu = el("ul", "must");
+    j.must_haves.forEach((m) => {
+      const [c, t] = MARK[String(m.status || "").toLowerCase()] || ["", String(m.status || "")];
+      const li = el("li");
+      li.append(el("span", "chip " + c, t), document.createTextNode((m.req || "") + (m.blocker ? " (Ausschluss)" : "")));
+      mu.append(li);
+    });
+    sb.append(mu);
+  }
+  if (j.focus_note) { const p = el("p", "fit"); p.append(el("i", "", "Fokus"), document.createTextNode(j.focus_note)); sb.append(p); }
+  const sk = j.skills || {};
+  grid.append(sb, list("Matched", sk.matched), list("Partial", sk.partial), list("Missing", sk.missing),
+    list("Argumente", j.arguments), list("Schwächen / Screening-Risiken", [...(j.weaknesses || []), ...(j.screening_risks || [])]));
+  det.append(grid);
+  const note = el("textarea", "note");
+  note.id = "note-" + j.key; note.placeholder = "Eigene Notiz (z. B. Ansprechpartner, Rückmeldung, Gehaltsvorstellung)";
+  note.value = j.note || ""; note.setAttribute("aria-label", "Notiz");
+  note.addEventListener("change", () => save(j.key, { note: note.value }, null));
+  note.addEventListener("blur", () => { if (!pointerDown) redrawLater(); });
+  det.append(note);
+  main.append(det);
+  const rq = state.requests.get(j.key);
+  if (rq && ["requested", "in_progress", "ready"].includes(rq.status)) {
+    const box = el("div", "reqbox" + (rq.status === "ready" ? " ready" : ""));
+    const head = { requested: "Claude soll diese Bewerbung ausfüllen.", in_progress: "Claude füllt diese Bewerbung gerade aus.",
+      ready: "Bewerbung ausgefüllt – wartet auf deine Bestätigung im Chat." }[rq.status];
+    box.append(el("b", "", head + " "), document.createTextNode(rq.status === "requested"
+      ? "Starten: in Claude Code auf deinem Rechner „Bewerbungen ausfüllen“ schreiben (Lebenslauf" + (rq.files && rq.files.cover_letter ? " + Anschreiben" : "") + ")."
+      : (rq.status_note || "")));
+    main.append(box);
+  }
+  if (state.editOpen.has(j.key) && j.letter) main.append(letterEditor(j));
+  if (state.applyOpen.has(j.key)) main.append(applyPanel(j));
+
+  const acts = el("div", "acts");
+  const b = board(j);
+  const open = b === "new" || b === "watch" || b === "portal";
+  const link = (href, label, primary) => {
+    const a = el("a", "btn" + (primary ? " primary" : ""), label);
+    a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer";
+    acts.append(a);
+  };
+  const url = safeUrl(j.apply_url) || safeUrl(j.url);
+  const onPortal = (u) => !!(u && portalByUrl(u));
+  if (url && !onPortal(url)) link(url, "Stelle öffnen & bewerben ↗", open);
+  const portalUrl = safeUrl(j.portal_url) || (onPortal(url) ? url : null);
+  if (portalUrl) link(portalUrl, "Auf " + (portalByUrl(portalUrl) || from || { label: "dem Portal" }).label + " öffnen ↗", open && !(url && !onPortal(url)));
+  else if (from && from.search_url && !(url && !onPortal(url)))   // alert without a link: search the portal for title and company
+    link(from.search_url.split("{q}").join(encodeURIComponent((j.title || "") + " " + (j.company || ""))), "Auf " + from.label + " suchen ↗", open);
+  if (j.letter && state.db) acts.append(button(state.editOpen.has(j.key) ? "Editor schließen" : "Anschreiben bearbeiten", "", () => toggleEditor(j.key)));
+  if (j.cover_letter_b64 && state.downloads) acts.append(button("Anschreiben (.docx)", "quiet", () => download(j)));
+  if (j.cv_b64 && state.downloads) acts.append(button("Lebenslauf (PDF)", "quiet", () => downloadCv(j)));
+  const reqNow = state.requests.get(j.key);
+  if ((b === "new" || b === "watch" || b === "portal") && !gone(j) && state.db) {
+    if (!reqNow || reqNow.status === "failed")
+      acts.append(button(state.applyOpen.has(j.key) ? "Ausfüllhilfe schließen" : "Bewerbung ausfüllen lassen", "", () => {
+        state.applyOpen.has(j.key) ? state.applyOpen.delete(j.key) : state.applyOpen.add(j.key); render(); }));
+    else if (reqNow.status === "requested")
+      acts.append(button("Auftrag zurückziehen", "quiet", () => withdraw(j)));
+  }
+  const move = (label, to, cls) => acts.append(button(label, cls || "", () => moveTo(j, to)));
+  if (b === "portal" || b === "low") {
+    if (!ownTabOf(j)) move("In „Neu“ übernehmen", "new");   // jobs of a segment with its own tab stay there
+    move("Auf die Merkliste", "watch", "quiet");
+    move("Als beworben markieren", "applied", "quiet");
+    move("Kein Interesse", "rejected", "quiet");
+  } else if (b === "new" || b === "watch") {
+    move("Als beworben markieren", "applied");
+    move(b === "new" ? "Auf die Merkliste" : "Zurück zu Neu", b === "new" ? "watch" : "new", "quiet");
+    move("Kein Interesse", "rejected", "quiet");
+  } else if (b === "applied") {
+    move("Einladung / Gespräch", "interview");
+    move("Absage erhalten", "declined", "quiet");
+    move("Doch nicht beworben", "new", "quiet");
+  } else if (b === "interview") {
+    move("Zusage erhalten", "offer");
+    move("Absage erhalten", "declined", "quiet");
+    move("Zurück zu Beworben", "applied", "quiet");
+  } else if (b === "offer") {
+    move("Zurück zu Im Gespräch", "interview", "quiet");
+  } else if (b === "declined") {
+    move("Zurück zu Beworben", "applied", "quiet");
+  } else {
+    move("Wieder aufnehmen", "new", "quiet");
+  }
+  row.append(score, main, acts);
+  return row;
+}
+
+function button(label, cls, fn) {
+  const b = el("button", "btn " + cls, label);
+  b.type = "button"; b.addEventListener("click", fn);
+  return b;
+}
+
+function renderSegments() {
+  const tab = curTab(), seg = curSeg();
+  const inTab = [...state.jobs.values()].filter((j) => view(j) !== null && (tab === "all" || view(j) === tab));
+  const counts = {};
+  inTab.forEach((j) => { const sg = segmentOf(j); counts[sg] = (counts[sg] || 0) + 1; });
+  counts[""] = inTab.length;
+  $("segs").replaceChildren(...segmentList().filter((sg) => sg.id === "" || counts[sg.id] || seg === sg.id).map((sg) => {
+    const b = el("button", "seg");
+    b.type = "button"; b.setAttribute("aria-pressed", String(seg === sg.id));
+    b.append(el("span", "", sg.label), el("span", "n", String(counts[sg.id] || 0)));
+    b.addEventListener("click", () => { state.seg = sg.id; remember(); render(); });
+    return b;
+  }));
+}
+
+// a snapshot that arrived while a note was being typed is drawn once typing ends, but never
+// between pressing and releasing a button (that would swallow the click)
+let pointerDown = false;
+function redrawLater() {
+  const a = document.activeElement;
+  if (state.redraw && !(a && a.closest && a.closest(".apply, .note, .editor"))) setTimeout(render, 0);
+}
+document.addEventListener("pointerdown", () => { pointerDown = true; }, true);
+document.addEventListener("pointerup", () => { pointerDown = false; redrawLater(); }, true);
+document.addEventListener("pointercancel", () => { pointerDown = false; }, true);
+
+// ---- "Auswertung": what came of the applications, so the user sees which sources and role families
+// lead to answers. Counts every job on an applied board.
+function originLabel(o) {
+  const p = portalOf(o);
+  return p ? p.label + "-Mails" : o === "manual" ? "Von dir eingereicht" : o === "mail" ? "Außerhalb beworben" : "Suche & Portale";
+}
+function dayDiff(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
+function weekStart(iso) { const d = new Date(iso + "T12:00:00"); const wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return d.toISOString().slice(0, 10); }
+function statRow(label, js) {
+  const n = js.length, talk = js.filter((j) => ["interview", "offer"].includes(board(j))).length;
+  const no = js.filter((j) => board(j) === "declined").length, open = n - talk - no;
+  const tr = el("tr");
+  [label, n, talk, no, open, n ? Math.round(100 * (talk + no) / n) + " %" : "–"].forEach((v) => tr.append(el("td", "", String(v))));
+  return tr;
+}
+function statTable(title, groups) {
+  const box = el("section", "panel"); box.append(el("h3", "", title));
+  const t = el("table", "stattable"), head = el("tr");
+  ["", "Beworben", "Gespräch/Zusage", "Absage", "Offen", "Antwortquote"].forEach((h) => head.append(el("th", "", h)));
+  t.append(head);
+  [...groups.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([k, js]) => t.append(statRow(k, js)));
+  box.append(t); return box;
+}
+function weekChart(applied) {
+  const weeks = [];
+  const now = new Date(); now.setHours(12);
+  for (let i = 11; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate() - 7 * i); weeks.push(weekStart(d.toISOString().slice(0, 10))); }
+  const per = new Map(weeks.map((w) => [w, []]));
+  applied.forEach((j) => { const d = j.applied_at || j.confirmed_at; if (d) { const w = weekStart(d.slice(0, 10)); if (per.has(w)) per.get(w).push(j); } });
+  const max = Math.max(1, ...[...per.values()].map((v) => v.length));
+  const W = 600, H = 190, padL = 24, padB = 24, padT = 10, bw = (W - padL) / weeks.length;
+  const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("class", "weekchart"); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Bewerbungen pro Woche, letzte 12 Wochen");
+  const mk = (tag, attrs) => { const n = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v)); return n; };
+  const y = (v) => H - padB - (H - padB - padT) * v / max;
+  svg.append(mk("line", { x1: padL, x2: W, y1: H - padB, y2: H - padB, class: "axis" }));
+  [0, max].forEach((v) => { const t = mk("text", { x: padL - 6, y: y(v) + 3, "text-anchor": "end" }); t.textContent = v; svg.append(t); });
+  const box = el("section", "panel"); const tip = el("div", "charttip"); tip.hidden = true;
+  weeks.forEach((w, i) => {
+    const n = per.get(w).length, x = padL + i * bw, h = H - padB - y(n);
+    const hit = mk("rect", { x: x, y: padT, width: bw, height: H - padB - padT, class: "hit" });
+    const bar = mk("rect", { x: x + bw * 0.2, y: n ? y(n) : H - padB, width: bw * 0.6, height: n ? Math.max(h, 2) : 0, rx: 3, class: "wbar" });
+    hit.addEventListener("pointerenter", () => { bar.classList.add("on"); const r = svg.getBoundingClientRect(), br = box.getBoundingClientRect();
+      tip.textContent = `Woche ab ${fmtDate(w)}: ${n} ${n === 1 ? "Bewerbung" : "Bewerbungen"}`;
+      tip.style.left = (r.left - br.left + (x + bw / 2) * r.width / W) + "px"; tip.style.top = (r.top - br.top + (n ? y(n) : H - padB) * r.height / H) + "px"; tip.hidden = false; });
+    hit.addEventListener("pointerleave", () => { bar.classList.remove("on"); tip.hidden = true; });
+    svg.append(hit, bar);
+    if (i % 2 === 1 || weeks.length <= 6) { const t = mk("text", { x: x + bw / 2, y: H - 8, "text-anchor": "middle" }); t.textContent = fmtDate(w).slice(0, 6); svg.append(t); }
+  });
+  box.append(el("h3", "", "Bewerbungen pro Woche"), svg, tip,
+    el("p", "hint", "Woche nach Bewerbungsdatum (ersatzweise Eingangsbestätigung). Werte auch in den Tabellen unten."));
+  return box;
+}
+function statsView() {
+  const applied = [...state.jobs.values()].filter((j) => APPLIED.includes(board(j)));
+  const wrap = el("div", "stats");
+  if (!applied.length) { const e = el("div", "empty"); e.append(el("strong", "", "Noch keine Bewerbungen")); wrap.append(e); return wrap; }
+  const talk = applied.filter((j) => ["interview", "offer"].includes(board(j))).length;
+  const no = applied.filter((j) => board(j) === "declined").length;
+  const conf = applied.filter((j) => j.confirmed_at || j.replied_at).length;
+  // same day = the application date is only known from the company's answer (sent outside the system): not counted
+  const waits = applied.filter((j) => j.replied_at && j.applied_at).map((j) => dayDiff(j.applied_at.slice(0, 10), j.replied_at)).filter((d) => d > 0).sort((a, b) => a - b);
+  const median = waits.length ? waits[Math.floor((waits.length - 1) / 2)] : null;
+  const tiles = el("div", "tiles");
+  [[applied.length, "Bewerbungen"], [Math.round(100 * conf / applied.length) + " %", "mit Rückmeldung der Firma"],
+   [talk, "Gespräche / Zusagen"], [no, "Absagen"], [median === null ? "–" : median + " Tage", `bis zur Antwort (Median aus ${waits.length})`]]
+    .forEach(([v, l]) => { const t = el("div", "tile"); t.append(el("b", "", String(v)), el("span", "", l)); tiles.append(t); });
+  const byOrigin = new Map(), bySeg = new Map();
+  applied.forEach((j) => {
+    const o = originLabel(j.origin); (byOrigin.get(o) || byOrigin.set(o, []).get(o)).push(j);
+    const sg = segLabel(j) || "Sonstige"; (bySeg.get(sg) || bySeg.set(sg, []).get(sg)).push(j);
+  });
+  const two = el("div", "twocol"); two.append(statTable("Nach Herkunft", byOrigin), statTable("Nach Rollenfamilie", bySeg));
+  wrap.append(tiles, weekChart(applied), two,
+    el("p", "rule", "Antwortquote = Gespräch, Zusage oder Absage im Verhältnis zu allen Bewerbungen. Eingangsbestätigungen zählen nicht als Antwort."));
+  return wrap;
+}
+
+function render() {
+  state.redraw = false;
+  renderTabs();
+  renderSegments();
+  const statsTab = curTab() === "stats";
+  $("segs").hidden = statsTab; document.querySelector(".filters").hidden = statsTab;
+  if (statsTab) { $("list").replaceChildren(statsView()); return; }
+  const rows = visible();
+  $("count").textContent = rows.length + (rows.length === 1 ? " Stelle" : " Stellen");
+  const main = $("list");
+  if (!rows.length) {
+    const e = el("div", "empty");
+    const t = tabList().find((x) => x.id === curTab()) || {}, label = t.label;
+    e.append(el("strong", "", state.jobs.size ? "Keine Stellen in „" + label + "“" : "Noch keine Stellen geladen"),
+      document.createTextNode(t.kind === "portal"
+        ? "Hier erscheinen die Stellen aus deinen " + label + "-Job-Mails, die nicht schon unter „Neu“ stehen."
+        : t.kind === "segment" ? "Hier erscheinen die Stellen der eigenen Suchspur „" + label + "“ – auch Vorab- und niedrig bewertete."
+        : state.jobs.size ? "Andere Ansicht wählen oder Filter zurücksetzen."
+        : "Nach dem nächsten Lauf erscheinen hier die neuen Empfehlungen mit Bewerbungslink und Anschreiben."));
+    main.replaceChildren(e);
+    return;
+  }
+  main.replaceChildren(...rows.map(jobRow));
+}
+
+let toastTimer = null;
+function toast(text, undo) {
+  $("toastText").textContent = text;
+  $("toastUndo").hidden = !undo;
+  $("toastUndo").onclick = () => { $("toast").hidden = true; if (undo) undo(); };
+  $("toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $("toast").hidden = true; }, 6000);
+}
+
+const pending = new Map();   // job key -> promise of its last write; the db wants one write at a time per document
+function save(key, patch, done) {
+  const j = state.jobs.get(key);
+  if (!j) return;
+  if (!state.db) { toast("Nicht gespeichert: keine Verbindung zur Datenbank.", null); return; }
+  const before = {};
+  Object.keys(patch).forEach((k) => { before[k] = j[k] === undefined ? "" : j[k]; });
+  state.jobs.set(key, { ...j, ...patch });   // snapshot data is frozen: replace the entry, never mutate it
+  render();
+  const write = (pending.get(key) || Promise.resolve()).catch(() => {})
+    .then(() => state.db.doc("jobs/" + key).update(patch));
+  pending.set(key, write);
+  write.then(() => { if (done) done(before); }).catch((e) => {
+    const cur = state.jobs.get(key);
+    if (cur) state.jobs.set(key, { ...cur, ...before });
+    render();
+    toast("Speichern fehlgeschlagen" + (e && e.code ? " (" + e.code + ")" : "") + ". Bitte erneut versuchen.", null);
+  }).finally(() => { if (pending.get(key) === write) pending.delete(key); });
+}
+
+function moveTo(j, to) {
+  const label = (tabList().find((t) => t.id === to) || {}).label;
+  const patch = { board: to };
+  if (to === "applied" && !j.applied_at) patch.applied_at = new Date().toISOString();
+  if (to === "new" || to === "watch") patch.applied_at = "";
+  save(j.key, patch, (before) => toast("Verschoben nach „" + label + "“", () => save(j.key, before, null)));
+}
+
+// Request for the form-filling session on the user's computer. It only queues the job: filling happens in
+// Claude Code with the user logged in, and the final "submit" needs their confirmation in that chat.
+function applyPanel(j) {
+  const box = el("section", "apply");
+  box.append(el("h3", "", "Bewerbung ausfüllen lassen"));
+  box.append(el("p", "hint", "Claude füllt das Formular in einem sichtbaren Browser auf deinem Rechner aus und hängt die gewählten Dateien an. Anmelden, Konto anlegen und CAPTCHAs übernimmst du. Abgesendet wird erst, wenn du genau diese Bewerbung im Chat bestätigst."));
+  const check = (label, on) => { const l = el("label"); const c = el("input"); c.type = "checkbox"; c.checked = on; l.append(c, document.createTextNode(label)); box.append(l); return c; };
+  const cv = check("Lebenslauf anhängen" + (j.cv_name ? " (" + j.cv_name + ")" : ""), true);
+  const letter = j.cover_letter_name ? check("Anschreiben anhängen (" + j.cover_letter_name + ")", true) : null;
+  const pdf = j.cover_letter_name ? check("Anschreiben zusätzlich als PDF (falls das Formular PDF verlangt)", false) : null;
+  if (j.letter && state.db) { const r = el("div", "row"); r.append(button(state.editOpen.has(j.key) ? "Anschreiben-Editor ist oben geöffnet" : "Anschreiben ansehen und bearbeiten", "quiet", () => { state.editOpen.add(j.key); render(); })); box.append(r); }
+  const grid = el("div", "grid");
+  const field = (label, ph) => { const w = el("label"); w.style.flexDirection = "column"; w.style.gap = "3px";
+    const i = el("input"); i.type = "text"; i.placeholder = ph; w.append(document.createTextNode(label), i); grid.append(w); return i; };
+  const salary = field("Gehaltswunsch (falls gefragt)", "z. B. 95.000 € brutto p. a.");
+  const notice = field("Kündigungsfrist / frühester Start", "z. B. 3 Monate zum Monatsende");
+  box.append(grid);
+  const hints = el("textarea"); hints.placeholder = "Weitere Hinweise für das Formular (optional)"; hints.rows = 2; box.append(hints);
+  const ok = check("Ich habe Lebenslauf und Anschreiben geprüft und gebe sie für diese Stelle frei.", false);
+  const go = button("Auftrag anlegen", "primary", () => {
+    const doc = { job_key: j.key, company: j.company || "", title: j.title || "", apply_url: j.apply_url || j.url || "",
+      files: { cv: cv.checked, cover_letter: !!(letter && letter.checked), cover_letter_pdf: !!(pdf && pdf.checked) },
+      answers: { salary: salary.value.trim(), notice: notice.value.trim(), hints: hints.value.trim() },
+      status: "requested", status_note: "", requested_at: new Date().toISOString() };
+    go.disabled = true;
+    state.db.doc("apply_requests/" + j.key).set(doc).then(() => {
+      state.applyOpen.delete(j.key); render();
+      toast("Vorgemerkt. Ausführen: in Claude Code auf deinem Rechner „Bewerbungen ausfüllen“ schreiben.", null);
+    }).catch((e) => { go.disabled = false; toast("Speichern fehlgeschlagen" + (e && e.code ? " (" + e.code + ")" : "") + ".", null); });
+  });
+  go.disabled = true;
+  ok.addEventListener("change", () => { go.disabled = !ok.checked; });
+  const r = el("div", "row"); r.append(go); box.append(r);
+  return box;
+}
+
+// ---- cover letter editor: the user edits subject, salutation and paragraphs here; every change is saved
+// to the db (collection "letters") and the next run rebuilds the .docx from it and reports the check.
+function toggleEditor(key) { state.editOpen.has(key) ? state.editOpen.delete(key) : state.editOpen.add(key); render(); }
+
+function letterDraft(j) {
+  if (state.drafts.has(j.key)) return state.drafts.get(j.key);
+  const saved = state.letters.get(j.key), base = j.letter;
+  const src = saved && saved.paragraphs ? saved : base;
+  const d = { subject: src.subject || "", salutation: src.salutation || "", paragraphs: [...(src.paragraphs || [])] };
+  state.drafts.set(j.key, d);
+  return d;
+}
+
+function letterChecks(j, d) {
+  const L = j.letter, out = [];
+  const words = d.paragraphs.join(" ").split(/\s+/).filter(Boolean).length;
+  out.push([words >= L.words_min && words <= L.words_max ? "good" : "warn", words + " Wörter (Ziel " + L.words_min + "–" + L.words_max + ")"]);
+  const chars = d.subject.length + d.salutation.length + d.paragraphs.reduce((n, p) => n + p.length, 0) + L.closing.length + L.signature_chars;
+  const budget = L.ref_chars - Math.max(0, L.head_paras + 2 + d.paragraphs.length + 2 - L.ref_paras) * 180;
+  const saved = state.letters.get(j.key), twoPages = saved && Number(saved.max_pages) >= 2;
+  out.push(chars <= budget ? ["good", "passt auf eine Seite (" + chars + "/" + budget + " Zeichen)"]
+    : twoPages ? ["warn", "zwei Seiten – von dir freigegeben (" + chars + " Zeichen)"]
+    : ["bad", "zu lang für eine Seite (" + chars + "/" + budget + " Zeichen)"]);
+  const sal = (SALUTATION_OK[L.language] || SALUTATION_OK.en).test(d.salutation.trim());
+  out.push([sal ? "good" : "bad", sal ? "Anrede korrekt" : (L.language === "de" ? "Anrede: „Sehr geehrte Frau / Sehr geehrter Herr <Nachname>,“ – nie Vor- und Nachname" : "Salutation: „Dear Ms/Mr <Last name>,“ – never first and last name")]);
+  const all = [d.subject, d.salutation, ...d.paragraphs].join("\n");
+  const hit = BANNED.find((re) => re.test(all));
+  if (hit) out.push(["bad", "Floskel: " + all.match(hit)[0]]);
+  if (/\[[^\]]{1,40}\]|\{\{|\bTBD\b|\bXXX\b/i.test(all)) out.push(["bad", "Platzhalter im Text"]);
+  if (d.paragraphs.some((p) => !p.trim())) out.push(["warn", "leerer Absatz wird beim Übernehmen entfernt"]);
+  return out;
+}
+
+// Only text the user actually typed is saved. A draft they have not touched is dropped whenever newer
+// data arrives, so a page left open never writes an outdated letter back over a newer one.
+// Snapshots can arrive late: the echo of an earlier autosave may come after the last save. So the
+// editor only takes server text that is newer than its own last save (compared by edited_at).
+const letterTimers = new Map(), letterWrites = new Map(), dirtyLetters = new Map(), ownSave = new Map();
+function markDirty(key) { dirtyLetters.set(key, (dirtyLetters.get(key) || 0) + 1); }
+function dropCleanDrafts() {
+  for (const k of [...state.drafts.keys()]) {
+    if (dirtyLetters.has(k)) continue;
+    const mine = ownSave.get(k), srv = state.letters.get(k);
+    if (!mine || (srv && srv.edited_at && srv.edited_at > mine)) state.drafts.delete(k);
+  }
+}
+function saveLetter(key, now) {
+  clearTimeout(letterTimers.get(key));
+  const run = () => {
+    const d = state.drafts.get(key); if (!d || !state.db || !dirtyLetters.has(key)) return;
+    const rev = dirtyLetters.get(key);
+    const stamp = new Date().toISOString();
+    ownSave.set(key, stamp);
+    const doc = { subject: d.subject, salutation: d.salutation, paragraphs: [...d.paragraphs], status: "edited", edited_at: stamp };
+    const w = (letterWrites.get(key) || Promise.resolve()).catch(() => {}).then(() => state.db.doc("letters/" + key).set(doc));
+    letterWrites.set(key, w);
+    const st = document.getElementById("lstat-" + key);
+    if (st) st.textContent = "speichert …";
+    w.then(() => { if (dirtyLetters.get(key) === rev) dirtyLetters.delete(key);
+      const x = document.getElementById("lstat-" + key); if (x) x.textContent = "gespeichert " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); })
+     .catch((e) => toast("Anschreiben nicht gespeichert" + (e && e.code ? " (" + e.code + ")" : "") + ". Bitte erneut versuchen.", null));
+  };
+  if (now) run(); else letterTimers.set(key, setTimeout(run, 1200));
+}
+
+function grow(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
+
+function letterEditor(j) {
+  const d = letterDraft(j), L = j.letter;
+  const box = el("section", "editor");
+  box.append(el("h3", "", "Anschreiben bearbeiten"));
+  const checks = el("div", "checks");
+  const refresh = () => checks.replaceChildren(...letterChecks(j, d).map(([c, t]) => el("span", "chip " + c, t)));
+  const changed = () => { markDirty(j.key); refresh(); saveLetter(j.key, false); };
+  const field = (label, value, set) => {
+    box.append(el("label", "", label));
+    const i = el("input"); i.type = "text"; i.value = value;
+    i.addEventListener("input", () => { set(i.value); changed(); });
+    i.addEventListener("blur", () => saveLetter(j.key, true));
+    box.append(i); return i;
+  };
+  field("Betreff", d.subject, (v) => { d.subject = v; });
+  field("Anrede", d.salutation, (v) => { d.salutation = v; });
+  box.append(el("label", "", "Text"));
+  d.paragraphs.forEach((text, i) => {
+    const wrap = el("div", "para");
+    const t = el("textarea"); t.value = text; t.setAttribute("aria-label", "Absatz " + (i + 1));
+    t.addEventListener("input", () => { d.paragraphs[i] = t.value; grow(t); changed(); });
+    t.addEventListener("blur", () => saveLetter(j.key, true));
+    requestAnimationFrame(() => grow(t));
+    wrap.append(t);
+    if (d.paragraphs.length > 1) wrap.append(button("Absatz entfernen", "quiet", () => { d.paragraphs.splice(i, 1); markDirty(j.key); saveLetter(j.key, true); render(); }));
+    box.append(wrap);
+  });
+  const add = el("div", "row");
+  add.append(button("Absatz hinzufügen", "quiet", () => { d.paragraphs.push(""); markDirty(j.key); render(); }));
+  box.append(add);
+  box.append(el("p", "fixed", L.closing + " – Grußformel und Unterschrift bleiben wie in deiner Vorlage."));
+  box.append(checks); refresh();
+  const lt = state.letters.get(j.key);
+  const foot = el("div", "row");
+  const st = el("span", "chip"); st.id = "lstat-" + j.key;
+  st.textContent = lt ? (LETTER_STATUS[lt.status] || ["", "gespeichert"])[1] : "noch unverändert";
+  foot.append(st);
+  if (lt && lt.status === "invalid" && lt.check && lt.check.errors) foot.append(el("span", "chip bad", lt.check.errors.join(" · ")));
+  if (lt && lt.status === "built" && lt.check) foot.append(el("span", "chip good", lt.check.body_words + " Wörter, " + String(lt.check.pages).split(" ")[0] + " Seite"));
+  if (lt) foot.append(button("Auf den Vorschlag zurücksetzen", "quiet", () => {
+    state.db.doc("letters/" + j.key).delete().then(() => { state.drafts.delete(j.key); ownSave.delete(j.key); toast("Zurückgesetzt – der nächste Lauf stellt den ursprünglichen Vorschlag wieder her.", null); render(); })
+      .catch((e) => toast("Zurücksetzen fehlgeschlagen" + (e && e.code ? " (" + e.code + ")" : "") + ".", null));
+  }));
+  box.append(foot);
+  return box;
+}
+
+function onLetters(snap) {
+  state.letters = new Map(snap.docs.map((d) => [d.id, { ...(d.data() || {}) }]));
+  dropCleanDrafts();
+  const a = document.activeElement;
+  if (a && a.closest && a.closest(".apply, .note, .editor")) { state.redraw = true; return; }
+  render();
+}
+
+function withdraw(j) {
+  state.db.doc("apply_requests/" + j.key).delete()
+    .then(() => toast("Auftrag zurückgezogen.", null))
+    .catch((e) => toast("Zurückziehen fehlgeschlagen" + (e && e.code ? " (" + e.code + ")" : "") + ".", null));
+}
+
+function onRequests(snap) {
+  state.requests = new Map(snap.docs.map((d) => [d.id, { ...(d.data() || {}) }]));
+  const a = document.activeElement;
+  if (a && a.closest && a.closest(".apply, .note, .editor")) { state.redraw = true; return; }
+  render();
+}
+
+// The .docx is rebuilt in the browser on every click, so a download never lags behind the editor:
+// the last built file is the template, the editor's current text (saved or not) and today's date go in.
+// Mirrors set_text() and format_date() in scripts/cover_letter.py; the next run still rebuilds and
+// fully checks the letter. Paragraphs are located by structure only, never by their text.
+const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const MONTHS = { de: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] };
+const LANG_TAG = { de: "de-DE", en: "en-GB" };
+function letterDate(lang, now, prefix) {   // the viewer's local date; prefix is the place in front of it ("<Ort>, ")
+  const t = now || new Date(), y = t.getFullYear(), m = t.getMonth(), d = t.getDate();
+  return (prefix || "") + (lang === "de" ? `${d}. ${MONTHS.de[m]} ${y}` : `${d} ${MONTHS.en[m]} ${y}`);
+}
+const wKids = (node, name) => [...node.childNodes].filter((n) => n.nodeType === 1 && n.namespaceURI === W_NS && (!name || n.localName === name));
+const wText = (p) => [...p.getElementsByTagNameNS(W_NS, "t")].map((t) => t.textContent).join("");
+function setRunText(p, text, lang) {
+  const xml = p.ownerDocument;
+  let keep = wKids(p, "r")[0];
+  if (!keep) { keep = xml.createElementNS(W_NS, "w:r"); p.appendChild(keep); }
+  for (const c of [...p.childNodes]) if (c !== keep && !(c.nodeType === 1 && c.namespaceURI === W_NS && c.localName === "pPr")) p.removeChild(c);
+  for (const c of [...keep.childNodes]) if (!(c.nodeType === 1 && c.namespaceURI === W_NS && c.localName === "rPr")) keep.removeChild(c);
+  String(text).split("\n").forEach((line, i) => {     // a typed line break stays a line break
+    if (i) keep.appendChild(xml.createElementNS(W_NS, "w:br"));
+    const t = xml.createElementNS(W_NS, "w:t");
+    t.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+    t.textContent = line; keep.appendChild(t);
+  });
+  if (lang && LANG_TAG[lang]) {
+    let rpr = wKids(keep, "rPr")[0];
+    if (!rpr) { rpr = xml.createElementNS(W_NS, "w:rPr"); keep.insertBefore(rpr, keep.firstChild); }
+    wKids(rpr, "lang").forEach((x) => rpr.removeChild(x));
+    const l = xml.createElementNS(W_NS, "w:lang"); l.setAttributeNS(W_NS, "w:val", LANG_TAG[lang]); rpr.appendChild(l);
+  }
+}
+// Layout of the letter. Default (no j.letter_slots): the first table in the body holds the date in the
+// last cell of its first row; the paragraphs after it are subject, salutation, body …, closing, signature.
+// j.letter_slots (optional, from the export script) overrides single positions. Indexes count the body's
+// top-level paragraphs of the stored file (tables skipped), negative ones from the end:
+//   subject, salutation, closing: index · body_start: index, body_end: index (exclusive)
+//   date: { table, row, cell, paragraph } or { paragraph } or null (no date line)
+//   date_prefix: text in front of the date; default is whatever precedes the first digit in the stored date
+//   remove: indexes of paragraphs to delete (e.g. a keyword line under the name)
+function slotIndex(v, n) { return Number.isInteger(v) && v >= -n && v < n ? (v < 0 ? n + v : v) : -1; }
+async function buildLetterDocx(j, d, now) {
+  const zip = await window.JSZip.loadAsync(j.cover_letter_b64, { base64: true });
+  const xml = new DOMParser().parseFromString(await zip.file("word/document.xml").async("string"), "application/xml");
+  const body = xml.getElementsByTagNameNS(W_NS, "body")[0];
+  const kids = wKids(body), tops = kids.filter((n) => n.localName === "p"), tables = kids.filter((n) => n.localName === "tbl");
+  const S = j.letter_slots && typeof j.letter_slots === "object" ? j.letter_slots : {};
+  const has = (k) => Object.prototype.hasOwnProperty.call(S, k);
+  const pick = (list, v) => { const i = slotIndex(v, list.length); return i < 0 ? null : list[i]; };
+  const idx = (k, dflt) => has(k) ? slotIndex(S[k], tops.length) : dflt;
+  const ti = kids.findIndex((n) => n.localName === "tbl");
+  const afterTable = ti < 0 ? null : kids.slice(ti + 1).find((n) => n.localName === "p");
+  const base = afterTable ? tops.indexOf(afterTable) : -1;
+  let dateP = null;
+  if (has("date")) {
+    const D = S.date;
+    if (D && typeof D === "object" && Number.isInteger(D.table)) {
+      const tr = pick(wKids(pick(tables, D.table) || body, "tr"), D.row === undefined ? 0 : D.row);
+      const tc = tr && pick(wKids(tr, "tc"), D.cell === undefined ? -1 : D.cell);
+      dateP = tc && pick(wKids(tc, "p"), D.paragraph === undefined ? 0 : D.paragraph);
+    } else if (D && typeof D === "object") dateP = pick(tops, D.paragraph);
+    if (D !== null && !dateP) throw new Error("date slot not found");
+  } else {
+    if (ti < 0) throw new Error("no date table");
+    dateP = wKids(wKids(wKids(kids[ti], "tr")[0], "tc").pop(), "p")[0];
+  }
+  const si = idx("subject", base), ai = idx("salutation", base < 0 ? -1 : base + 1);
+  const b0 = idx("body_start", base < 0 ? -1 : base + 2), b1 = has("body_end") ? (S.body_end === tops.length ? tops.length : slotIndex(S.body_end, tops.length)) : tops.length - 2;
+  const ci = idx("closing", tops.length - 2);
+  if (si < 0 || ai < 0 || b0 < 0 || b1 <= b0) throw new Error("unexpected letter layout");
+  const subject = tops[si], salutation = tops[ai], paras = tops.slice(b0, b1);
+  if (paras.includes(subject) || paras.includes(salutation) || subject === salutation) throw new Error("unexpected letter layout");
+  const closing = ci < 0 || paras.includes(tops[ci]) || tops[ci] === subject || tops[ci] === salutation ? null : tops[ci];
+  const fixed = new Set([subject, salutation, closing, dateP, ...paras]);
+  const drop = (Array.isArray(S.remove) ? S.remove.slice(0, 10) : []).map((v) => pick(tops, v)).filter((n) => n && !fixed.has(n));
+  const lang = (j.letter && j.letter.language) || j.language || cfg.language || "en";
+  if (dateP) {
+    const prefix = typeof S.date_prefix === "string" ? S.date_prefix.slice(0, 60) : (/^\D*/.exec(wText(dateP))[0] || "").slice(0, 60);
+    setRunText(dateP, letterDate(lang, now, prefix), lang);
+  }
+  const texts = d.paragraphs.map((x) => x.trim()).filter(Boolean);
+  if (!texts.length) throw new Error("no text");
+  while (paras.length > texts.length) { const x = paras.pop(); x.parentNode.removeChild(x); }
+  while (paras.length < texts.length) { const c = paras[paras.length - 1].cloneNode(true); paras[paras.length - 1].after(c); paras.push(c); }
+  setRunText(subject, d.subject.trim(), lang); setRunText(salutation, d.salutation.trim(), lang);
+  paras.forEach((p, i) => setRunText(p, texts[i], lang));
+  if (closing && j.letter && j.letter.closing) setRunText(closing, j.letter.closing, lang);
+  drop.forEach((n) => { if (n.parentNode) n.parentNode.removeChild(n); });
+  const decl = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
+  zip.file("word/document.xml", decl + new XMLSerializer().serializeToString(xml.documentElement));
+  const core = zip.file("docProps/core.xml");
+  if (core) {
+    const stamp = new Date((now || new Date()).getTime()).toISOString().replace(/:\d\d\.\d+Z$/, ":00Z");
+    zip.file("docProps/core.xml", (await core.async("string")).replace(/(<dcterms:modified[^>]*>)[^<]*(<\/dcterms:modified>)/, "$1" + stamp + "$2"));
+  }
+  return zip.generateAsync({ type: "blob", compression: "DEFLATE", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+}
+function storedDocx(j) {
+  const bin = atob(j.cover_letter_b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes]);
+}
+function downloadCv(j) {   // the CV tailored to this job, stored only for jobs the user asked it for
+  const bin = atob(j.cv_b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  state.downloads.save({ filename: j.cv_name || "Lebenslauf.pdf", data: new Blob([bytes], { type: "application/pdf" }) })
+    .catch((e) => { if (!e || e.code !== "declined") toast("Download hier nicht möglich. Die Datei liegt im Projektordner der Stelle.", null); });
+}
+async function download(j) {
+  if (dirtyLetters.has(j.key)) saveLetter(j.key, true);    // typed text also reaches the db for the run
+  let data, fresh = false;
+  if (j.letter && window.JSZip) {
+    try { data = await buildLetterDocx(j, letterDraft(j)); fresh = true; }
+    catch (e) { console.warn("docx rebuild failed", e); }
+  }
+  if (!data) data = storedDocx(j);
+  state.downloads.save({ filename: j.cover_letter_name || "Anschreiben.docx", data })
+    .then(() => { if (!fresh && j.letter) toast("Neu erzeugen ging hier nicht – das ist die Fassung vom letzten Lauf.", null); })
+    .catch((e) => { if (!e || e.code !== "declined") toast("Download hier nicht möglich. Die Datei liegt im Projektordner unter 04_Cover_Letters.", null); });
+}
+
+function remember() {
+  try { localStorage.setItem("jobcockpit", JSON.stringify({ tab: state.tab, sort: state.sort, country: state.country, seg: state.seg })); } catch (e) { /* optional */ }
+}
+function restore() {
+  try {
+    const s = JSON.parse(localStorage.getItem("jobcockpit") || "{}");
+    // tab and segment ids depend on the config that arrives later: keep any well-formed id, curTab()/curSeg() validate
+    if (typeof s.tab === "string" && ID_RE.test(s.tab)) state.tab = s.tab;
+    if (["score", "date", "company"].includes(s.sort)) state.sort = s.sort;
+    if (typeof s.seg === "string" && (s.seg === "" || ID_RE.test(s.seg))) state.seg = s.seg;
+  } catch (e) { /* optional */ }
+  const h = location.hash.slice(1);
+  if (ID_RE.test(h)) state.tab = h;
+  $("sort").value = state.sort;
+}
+
+function fillCountries() {
+  const sel = $("country");
+  const have = [...new Set([...state.jobs.values()].map((j) => j.country).filter(Boolean))].sort();
+  const keep = sel.value;
+  sel.replaceChildren(el("option", "", "Alle Länder"), ...have.map((c) => { const o = el("option", "", COUNTRY[c] || c); o.value = c; return o; }));
+  sel.firstChild.value = "";
+  sel.value = have.includes(keep) ? keep : "";
+  state.country = sel.value;
+}
+
+$("q").addEventListener("input", (e) => { state.q = e.target.value; render(); });
+$("country").addEventListener("change", (e) => { state.country = e.target.value; render(); });
+$("sort").addEventListener("change", (e) => { state.sort = e.target.value; remember(); render(); });
+
+function onJobs(snap) {
+  state.jobs = new Map(snap.docs.map((d) => { const j = { ...(d.data() || {}) }; j.key = j.key || d.id; return [j.key, j]; }));
+  dropCleanDrafts();
+  const active = document.activeElement;
+  if (active && active.closest && active.closest(".apply, .note, .editor")) { state.redraw = true; return; }   // redraw after typing
+  fillCountries();
+  const last = [...state.jobs.values()].map((j) => j.report_date || "").sort().pop();
+  const shown = [...state.jobs.values()].filter((j) => view(j) !== null).length;
+  $("status").textContent = state.jobs.size
+    ? shown + " Stellen im Blick · letzter Lauf " + fmtDate(last)
+    : "Verbunden. Der nächste Lauf füllt die Liste.";
+  render();
+}
+
+function listText(xs) { return xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " und " + xs[xs.length - 1]; }
+function renderConfig() {
+  const o = $("owner"); o.textContent = cfg.owner; o.hidden = !cfg.owner;
+  const names = cfg.portals.map((p) => p.label);
+  const rules = [listText(names) + (names.length === 1 ? " zeigt" : " zeigen") + " die Stellen aus deinen Job-Mails, die nicht unter „Neu“ stehen – nach demselben Modell bewertet. Ein „Vorab-Score“ beruht nur auf Titel, Unternehmen und Ort der Mail."];
+  cfg.segments.filter((x) => x.own_tab).forEach((x) => rules.push("„" + x.label + "“ zeigt die Stellen dieser eigenen Suchspur getrennt von „Neu“ – auch Vorab- und niedrig bewertete. Merkliste, Beworben und die weiteren Schritte laufen wie gewohnt über die Status-Reiter; der Segment-Filter „" + x.label + "“ zeigt sie dort."));
+  $("rules").replaceChildren(...rules.map((t) => el("p", "rule", t)));
+}
+function onConfig(snap) {
+  const d = snap.docs.find((x) => x.id === "ui");
+  let raw = null;
+  try { raw = d ? d.data() : null; } catch (e) { raw = null; }
+  cfg = buildConfig(raw);
+  renderConfig();
+  const a = document.activeElement;
+  if (a && a.closest && a.closest(".apply, .note, .editor")) { state.redraw = true; return; }
+  render();
+}
+
+// ---- "Job suche starten": queues a run (collection run_requests) for the local poller. The request
+// carries no free text, so the button cannot become a way to pass instructions into a run.
+// What the button shows always comes from the db: `runs` keeps the furthest state seen per request and a
+// late or out-of-order snapshot can neither take a request back nor move it to an earlier state.
+const RUN_BLOCK_MS = 3 * 3600000;   // a request stuck longer than this no longer blocks a new one
+const RUN_RANK = new Map([["requested", 1], ["running", 2], ["done", 3], ["failed", 3]]);
+const runs = new Map();
+let runWriting = false;
+function runTime(v) { const t = typeof v === "string" ? Date.parse(v) : NaN; return isNaN(t) ? null : t; }
+function runPending(r, now) {
+  const age = now - runTime(r.requested_at);
+  return (r.status === "requested" || r.status === "running") && age < RUN_BLOCK_MS && age > -600000;
+}
+function runClock(iso) {
+  const t = runTime(iso); if (t === null) return "";
+  const d = new Date(t), hm = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  return d.toDateString() === new Date().toDateString() ? hm : d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + hm;
+}
+function runText(r, now) {
+  if (r.status === "failed") { const n = r.status_note.replace(/\s+/g, " ").trim().slice(0, 120); return "Fehlgeschlagen" + (n ? ": " + n : ""); }
+  if (r.status === "done") return "Letzter Lauf fertig " + runClock(runTime(r.finished_at) === null ? r.requested_at : r.finished_at);
+  if (!runPending(r, now)) return "Anfrage von " + runClock(r.requested_at) + " nicht abgeschlossen – erneut starten möglich";
+  if (r.status === "running") return "Läuft seit " + runClock(runTime(r.started_at) === null ? r.requested_at : r.started_at);
+  return "Angefragt " + runClock(r.requested_at) + " – wird beim nächsten Abholen gestartet";
+}
+function renderRun() {
+  $("runBox").hidden = !state.db;
+  if (!state.db) return;
+  const now = Date.now();
+  const all = [...runs.values()].sort((a, b) => runTime(b.requested_at) - runTime(a.requested_at) || (a.id < b.id ? 1 : -1));
+  const blocking = all.find((r) => runPending(r, now));
+  const cur = blocking || all[0];
+  $("runBtn").disabled = runWriting || !!blocking;
+  const text = runWriting ? "Wird angefragt …" : cur ? runText(cur, now) : "";
+  if ($("runStatus").textContent !== text) $("runStatus").textContent = text;
+}
+function onRuns(snap) {
+  snap.docs.forEach((d) => {
+    let x; try { x = d.data() || {}; } catch (e) { return; }
+    if (typeof d.id !== "string" || !/^run_[A-Za-z0-9_-]{1,40}$/.test(d.id) || !RUN_RANK.has(x.status) || runTime(x.requested_at) === null) return;
+    const old = runs.get(d.id);
+    if (old && RUN_RANK.get(old.status) > RUN_RANK.get(x.status)) return;   // late echo of an earlier state
+    runs.set(d.id, { id: d.id, status: x.status, requested_at: x.requested_at, started_at: x.started_at, finished_at: x.finished_at,
+      status_note: typeof x.status_note === "string" ? x.status_note : "" });
+  });
+  renderRun();
+}
+function startRun() {
+  if (!state.db || runWriting || $("runBtn").disabled) return;
+  const iso = new Date().toISOString(), id = "run_" + iso.replace(/[-:.]/g, "");
+  const doc = { requested_at: iso, status: "requested", source: "dashboard" };
+  runWriting = true; renderRun();
+  state.db.doc("run_requests/" + id).set(doc).then(() => {
+    runWriting = false;
+    if (!runs.has(id)) runs.set(id, { id, ...doc, status_note: "" });   // confirmed by the db; its snapshot may arrive later
+    renderRun();
+    // The poller on the user's computer watches the Downloads folder for exactly this file name; the content is never interpreted.
+    if (state.downloads && cfg.token)
+      state.downloads.save({ filename: "jobsuche-start-" + cfg.token + ".trigger", data: new Blob([id], { type: "text/plain" }) })
+        .catch(() => toast("Anfrage gespeichert. Die Startdatei wurde nicht abgelegt – der Lauf startet beim nächsten planmäßigen Abholen.", null));
+  }).catch((e) => {
+    runWriting = false; renderRun();
+    toast("Anfrage nicht gespeichert" + (e && e.code ? " (" + e.code + ")" : "") + ". Bitte erneut versuchen.", null);
+  });
+}
+$("runBtn").addEventListener("click", startRun);
+setInterval(renderRun, 60000);   // the 3-hour rule and "today" also change while no snapshot arrives
+
+async function start() {
+  restore();
+  renderConfig();
+  render();
+  const claude = window.claude;
+  if (!claude || !claude.use) { $("status").textContent = "Vorschau ohne Datenbank – bitte in claude.ai öffnen."; return; }
+  const [db, downloads] = await Promise.all([claude.use("db"), claude.use("downloads")]);
+  state.db = db; state.downloads = downloads;
+  if (!db) { $("status").textContent = "Datenbank hier nicht erreichbar – bitte angemeldet in claude.ai öffnen."; return; }
+  renderRun();
+  db.collection("config").onSnapshot(onConfig, () => {});
+  db.collection("run_requests").onSnapshot(onRuns, () => {});
+  db.collection("jobs").onSnapshot(onJobs, () => { $("status").textContent = "Verbindung zur Datenbank unterbrochen – Seite neu laden."; });
+  db.collection("apply_requests").onSnapshot(onRequests, () => {});
+  db.collection("letters").onSnapshot(onLetters, () => {});
+}
+start();
+</script>

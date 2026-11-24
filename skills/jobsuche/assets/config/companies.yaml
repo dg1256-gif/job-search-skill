@@ -1,0 +1,102 @@
+# 01_Config/companies.yaml – Arbeitgeber: (1) automatisch abgefragte öffentliche Karriere-Feeds,
+# (2) Nachschlageliste für die Recherche, (3) Beobachtungsliste, (4) Jobbörsen.
+# Die Liste ist NICHT exklusiv: ein unbekannter Arbeitgeber mit sehr hoher Passung ist genauso willkommen.
+# Alle Einträge unten sind erfundene Beispiele (# Beispiel). Die echten Kennungen stehen in der Adresse
+# einer Stellenanzeige des Arbeitgebers; nie raten, immer aus einer echten Stellen-URL übernehmen.
+
+ats: []   # von `08_Scripts/jobsearch.py fetch` abgefragt; je Eintrag: company, industry, type + Felder des Typs
+# Für jeden Eintrag möglich: locations (Ortsteile klein; nur Treffer an diesen Orten), segment (festes
+# Dashboard-Segment), title_include / title_exclude (zusätzliche Titelteile nur für diesen Feed), max_results.
+#
+# ats:
+#   - company: Muster Software          # Beispiel – Greenhouse: boards.greenhouse.io/<board>
+#     industry: Software
+#     type: greenhouse
+#     board: mustersoftware
+#     locations: [musterstadt, remote]
+#   - company: Beispiel AI              # Beispiel – Ashby: jobs.ashbyhq.com/<board>
+#     industry: KI
+#     type: ashby
+#     board: beispielai
+#   - company: Muster Industrie         # Beispiel – Workday: <host>/<site>/job/...
+#     industry: Maschinenbau
+#     type: workday
+#     host: muster.wd3.myworkdayjobs.com
+#     tenant: muster
+#     site: Careers
+#     countries: [DE, AT]               # leer = die Länder aus search_profile.yaml (lanes)
+#     queries: [project manager, projektleiter]   # Suchbegriffe; ohne queries wird der ganze Feed geblättert
+#     max_pages: 2                      # je Suchbegriff höchstens so viele Seiten à 20 Treffer
+#     country_facet: locationCountry    # manche Mandanten nennen den Filter "Country" oder "Location_Country"
+#     multi_location_ok: true           # Treffer mit "2 Locations" trotz Ortsfilter behalten
+#   - company: Beispiel Technik         # Beispiel – SmartRecruiters: jobs.smartrecruiters.com/<board>
+#     industry: Elektronik
+#     type: smartrecruiters
+#     board: BeispielTechnik
+#     country: de                       # Länderkürzel klein
+#   - company: Muster Automobil         # Beispiel – BeeSite: <base>/search/
+#     industry: Fahrzeugbau
+#     type: beesite
+#     base: "https://jobs.muster-automobil.example"
+#     criteria: {}                      # optionale Suchkriterien des Portals (CriterionName: Wert)
+#     country_names: [Deutschland, Germany]   # leer = die Länder aus search_profile.yaml
+#   - company: Beispiel Werke           # Beispiel – SAP SuccessFactors: <base>/sitemap.xml
+#     industry: Industrie
+#     type: successfactors
+#     base: "https://jobs.beispiel-werke.example"
+#     locations: [musterstadt]          # leer = successfactors_cities bzw. alle Orte aus search_profile.yaml
+#     countries: [DE]                   # nur bei Seiten, die einen RSS-Feed mit Länderkürzel liefern
+#     brands: []                        # nur bei Konzernseiten mit Markenpfad in der Adresse
+#     any_city: false                   # true bei Seiten, deren Stellen-Adressen keinen Ort enthalten
+#   - company: Muster Halbleiter        # Beispiel – Eightfold: <host>/careers
+#     industry: Halbleiter
+#     type: eightfold
+#     host: jobs.muster-halbleiter.example
+#     domain: muster-halbleiter.example
+#     location: Germany                 # Land auf Englisch; leer = erstes Land aus search_profile.yaml
+#   - company: Beispiel Messtechnik     # Beispiel – ADP: myjobs.adp.com/<site>
+#     industry: Messtechnik
+#     type: adp
+#     orgoid: "<ORGOID AUS DER STELLEN-URL>"
+#     site: beispielcareers
+#     countries: [DE]
+#   - company: Muster Engineering       # Beispiel – d.vinci: <base>/jobPublication/list.json
+#     industry: Ingenieurdienstleister
+#     type: dvinci
+#     base: "https://muster-engineering.dvinci-hr.example"
+#     default_location: Musterstadt     # das Portal liefert keinen Ort
+#   - company: Beispiel Robotik         # Beispiel – Recruitee: <base>/api/offers/
+#     industry: Robotik
+#     type: recruitee
+#     base: "https://beispielrobotik.recruitee.example"
+
+workday_country_ids: {}   # zusätzliche Workday-Länder-IDs (Kürzel: ID aus dem Länderfilter einer Karriereseite);
+                          # eingebaut sind DE, AT, CH, NL, PL, CA, AU, CN
+
+ats_lookup:   # Nachschlageliste für die Recherche, KEIN Feed (`fetch` liest nur `ats`)
+  # Workday-Fehler: 422 = Host/Mandant falsch, 404 = Mandant richtig, Site falsch. Site-Namen nie raten:
+  # erst hier und in `ats` nachsehen, sonst aus einer echten Stellen-URL des Arbeitgebers übernehmen.
+  workday: []
+  # - {company: Muster Industrie, host: muster.wd3.myworkdayjobs.com, tenant: muster, site: Careers, facet: locationCountry}   # Beispiel
+  other: []   # Arbeitgeber ohne Workday: dort keine Workday-Abfrage versuchen, direkt die Karriereseite nutzen
+  # - {company: Beispiel Werke, ats: successfactors, base: "https://jobs.beispiel-werke.example"}   # Beispiel
+  query:      # Abfragewege für Systeme ohne eigenen Feed. <kw> = Suchbegriff, <country> = Land auf Englisch
+    jobs2web: "GET https://<host>/search/?q=<kw>&locationsearch=<country> – HTML, Gesamtzahl aus 'Results a – b of N', Links /job/…; sonst https://<host>/sitemap.xml (alle Stellen-Adressen mit Ort und Titel)"
+    eightfold: "GET https://<host>/api/pcsx/search?domain=<domain>&query=<kw>&location=<country>&start=0 – JSON data.count, data.positions[] (10 je Seite)"
+    phenom: "POST https://<host>/widgets mit JSON {lang, deviceType: desktop, country, pageName: search-results, ddoKey: refineSearch, from: 0, size: 10, jobs: true, counts: true, keywords: <kw>, global: true, selected_fields: {country: [<Country>]}, siteType: external} – refineSearch.totalHits, refineSearch.data.jobs[]"
+    smartrecruiters: "GET https://api.smartrecruiters.com/v1/companies/<board>/postings?q=<kw>&country=<cc>&limit=100"
+    ashby: "GET https://api.ashbyhq.com/posting-api/job-board/<board>"
+    companies: []
+    # - {company: Beispiel Werke, how: jobs2web, host: jobs.beispiel-werke.example}   # Beispiel
+
+watchlist:   # gezielte Suche je Arbeitgeber (Karriereseite zuerst, dann Websuche); Gruppen frei benennbar
+  wunscharbeitgeber: []
+  # - {name: Muster GmbH, careers: "https://www.muster.example/karriere", note: "Standort Musterstadt"}   # Beispiel
+
+job_boards:   # über Websuche und öffentliche Ergebnisseiten; das Original immer beim Arbeitgeber prüfen
+  - {name: Indeed, url: "https://de.indeed.com", note: "offizieller Connector bevorzugt, wenn verbunden"}
+  - {name: StepStone, url: "https://www.stepstone.de"}
+  - {name: LinkedIn, note: "NUR über Job-Alert-Mails, kein Abruf der Seite"}
+  - {name: XING, note: "NUR über Job-Alert-Mails, kein Abruf der Seite"}
+  # - {name: jobs.ch, url: "https://www.jobs.ch"}
+  # - {name: karriere.at, url: "https://www.karriere.at"}

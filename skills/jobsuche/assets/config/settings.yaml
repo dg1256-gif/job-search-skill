@@ -1,0 +1,83 @@
+# 01_Config/settings.yaml – der Vertrag zwischen Einrichtung, Skripten und Dashboard.
+# Der Einrichtungs-Assistent (Skill "jobsuche", references/einrichtung.md) füllt die Platzhalter
+# Schritt für Schritt. Hier stehen NIE Passwörter, Tokens oder API-Keys: ein Mail-Passwort liegt
+# im Schlüsselbund des Betriebssystems (macOS Keychain / Windows-Anmeldeinformationsverwaltung).
+# Ein Wert in <SPITZEN_KLAMMERN> gilt als "noch nicht eingerichtet"; `setup.py check` meldet ihn.
+
+person:
+  full_name: "<VORNAME NACHNAME>"      # so steht der Name in Dokument-Eigenschaften und Dateinamen
+  city: "<WOHNORT>"                    # Ort in der Datumszeile des Anschreibens
+  timezone: "Europe/Berlin"            # IANA-Zeitzone für Datum und Zeitplan
+  fixed_title: ""                      # optional: Berufsbezeichnung, die in jedem Anschreiben wörtlich stehen muss
+
+language:
+  default: "de"                        # de | en – Sprache für Berichte; Anschreiben folgen der Sprache der Anzeige
+
+mail:
+  mode: "<MAIL_MODUS>"                 # gmail | apple_mail | imap | forward | none
+  address: "<DEINE_MAILADRESSE>"       # nur zur Zuordnung von Antworten, wird nie an Dritte gesendet
+  alert_senders:                       # Absender der Job-Alerts, die gelesen werden
+    - "jobalerts-noreply@linkedin.com"
+    - "jobs-listings@linkedin.com"
+    - "mailrobot@mail.xing.com"
+    - "alert@indeed.com"
+  signature_lines: []                  # optional: Zeilen unter deinem Namen in der Bewerbungs-Mail, z. B. ["Musterstraße 1, 12345 Musterstadt", "Tel. 01234 567890"]
+  imap:                                # nur bei mode: imap (z. B. Telekom/T-Online, GMX, WEB.DE, Outlook.com, iCloud)
+    host: "<IMAP_SERVER>"
+    port: 993
+    user: "<IMAP_BENUTZER>"
+    keyring_service: "jobsuche-imap"   # Name des Schlüsselbund-Eintrags; das Passwort selbst steht nirgends in Dateien
+    drafts_folder: "Drafts"            # Ordner für Bewerbungs-Entwürfe (wird bei der Einrichtung ermittelt)
+    folders: ["INBOX"]                 # Ordner, in denen Alerts und Antworten gesucht werden (Namen zeigt `mail_bridge_imap.py folders`)
+  apple_mail:                          # nur bei mode: apple_mail (macOS, liest über die Mail-App, ohne Passwort)
+    account: "<NAME_DES_KONTOS_IN_MAIL>"
+    mailboxes: ["INBOX"]               # Postfächer des Kontos, die gelesen werden (z. B. zusätzlich ein Ordner "Jobs")
+  days_back: 2                         # wie viele Tage Alert-Mails ein Lauf zurückschaut
+
+templates:
+  cover_letter: "00_Input/Anschreiben_Referenz/<DEINE_ANSCHREIBEN_VORLAGE>.docx"
+  cover_letter_slots: {}               # wird von `cover_letter.py inspect` + Assistent gefüllt (welcher Absatz ist was)
+  cover_letter_leftovers: []           # optional: Wörter aus dem alten Brief der Vorlage (z. B. dessen Firmenname), die in keinem neuen Anschreiben stehen dürfen
+  cv:
+    de: "00_Input/Lebenslauf/<DEIN_LEBENSLAUF_DE>.docx"
+    en: ""                             # leer = es gibt keinen englischen Lebenslauf
+  cv_pdf: "00_Input/Lebenslauf/<DEIN_LEBENSLAUF>.pdf"   # unveränderter Lebenslauf für Bewerbungen ohne Zuschnitt
+  cv_slots: {}                         # wird von `cv_tailor.py inspect` + Assistent gefüllt
+
+documents:
+  pdf_engine: "auto"                   # auto | word | libreoffice | none
+  letter_filename: "Anschreiben_{role}.docx"
+  letter_words: [250, 400]
+  max_pages: 1
+  cv_summary_words: [50, 140]          # erlaubte Länge der neu geschriebenen Zusammenfassung im Lebenslauf
+
+browser:
+  engine: "auto"                       # auto | gstack | claude_in_chrome
+
+form_defaults: {}                      # Standardantworten für Formulare (Kündigungsfrist, Gehaltswunsch …), siehe references/formular.md
+
+dashboard:
+  mode: "artifact"                     # artifact (private Seite bei claude.ai, braucht Claude Code) | local (auf diesem Rechner, jedes Programm)
+  local_port: 8765                     # nur bei mode: local
+  url: ""                              # nur bei mode: artifact – Adresse deines eigenen Dashboards, entsteht beim ersten Veröffentlichen
+  trigger_token: ""                    # zufällige Kennung für den Knopf "Job suche starten" (setup.py erzeugt sie; kein Geheimnis im engeren Sinn)
+  portals:                             # Alert-Quellen mit eigenem Reiter
+    - {id: "linkedin", label: "LinkedIn", search_url: "https://www.linkedin.com/jobs/search/?keywords={q}"}
+    - {id: "xing", label: "XING", search_url: "https://www.xing.com/jobs/search?keywords={q}"}
+  segment_tabs: []                     # optionale eigene Reiter für eine Suchspur, z. B. [{id: "remote", label: "Remote"}]
+
+schedule:
+  mode: "<ZEITPLAN>"                   # cloud | local | none
+  time: "07:30"                        # Ortszeit des täglichen Laufs
+  mail_bridge_times: ["07:00", "18:30"]  # nur bei mail.mode apple_mail/imap zusammen mit schedule.mode cloud; die erste Zeit liegt vor schedule.time
+  poll_seconds: 120                    # wie oft der lokale Abholer nach dem Start-Knopf schaut
+  downloads_dir: ""                    # leer = der normale Download-Ordner; nur ändern, wenn der Browser woanders speichert
+
+agent:                                 # welches Programm den Lauf auf diesem Rechner ausführt
+  cli: "claude"                        # claude | codex | gemini | grok | custom
+  model: ""                            # optional: Modellname für das Programm; leer = dessen eigene Voreinstellung
+  helper_model: ""                     # optional: günstigeres Modell für Hilfsaufgaben (nur für die Anleitungen, Skripte nutzen es nicht)
+  command: ""                          # nur bei cli: custom – vollständiger Befehl mit {prompt} und optional {model}
+
+git:
+  sync: false                          # true, wenn der Arbeitsordner ein privates Git-Repository ist (nötig für den Cloud-Lauf)

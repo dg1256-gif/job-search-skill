@@ -1,0 +1,5 @@
+# Begriffe, die in deinem Lebenslauf nicht als Praxis belegt sind (z. B. ein Werkzeug, das du nur aus
+# einem Kurs kennst). Steht einer davon in einem Anschreiben oder in der Lebenslauf-Zusammenfassung,
+# meldet die Prüfung das, damit die Formulierung ehrlich bleibt ("Grundkenntnisse" statt "Erfahrung").
+# Ein Begriff pro Zeile. Zeilen mit # werden ignoriert.
+# Alternative: dieselbe Liste unter dem Schlüssel `unbelegt:` in 01_Config/exclusions.yaml.

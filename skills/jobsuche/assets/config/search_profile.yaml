@@ -1,0 +1,95 @@
+# 01_Config/search_profile.yaml – das Suchprofil: welche Rollen, wo, wie gewichtet.
+# Harte Regeln (Gehalt, Regionen) werden NIE stillschweigend geändert; jede Änderung wird unten
+# im changelog dokumentiert. Hier stehen keine Zugangsdaten.
+# Ein Wert in <SPITZEN_KLAMMERN> gilt als "noch nicht ausgefüllt"; die Skripte brechen dann mit
+# einer Meldung ab, statt mit dem Platzhalter zu arbeiten.
+version: 1
+timezone: Europe/Berlin            # IANA-Zeitzone für Datumsangaben in Berichten
+report_time: "09:00"               # Uhrzeit, zu der der Tagesbericht fertig sein soll (Ortszeit)
+
+daily_selection:
+  target_new_jobs: [5, 8]          # so viele Stellen zeigt der Tagesbericht; weniger ist erlaubt
+  max_stretch: 3                   # höchstens so viele Stretch-Stellen (eine Ebene über dem Profil)
+  min_score_report: 7.0            # darunter erscheint eine Stelle nicht im Tagesbericht
+  apply_threshold: 8.5             # ab hier entstehen Anschreiben und Bewerbungspaket
+  strategic_band: [8.0, 8.4]       # in diesem Band nur bei besonderem strategischem Interesse
+  max_ai_share: 0.4                # höchster Anteil reiner KI-Rollen unter den Hauptempfehlungen
+
+freshness_days: [1, 3, 7]          # Vorrang: 24 h, 72 h, 7 Tage; ältere Anzeigen nur bei Ausnahme-Passung
+
+scoring_weights:                   # Gewichte der Teilnoten, Summe = 1.0 (Schlüssel nicht umbenennen)
+  fachlich: 0.30                   # fachliche Passung
+  transfer: 0.20                   # übertragbare Erfahrung
+  senioritaet: 0.15                # Seniorität und Verantwortung
+  compensation: 0.15               # Gehalt (wird vom Skript aus salary_rules.yaml berechnet)
+  standort: 0.10                   # Standort, Visum, Umzug
+  strategie: 0.10                  # strategische Attraktivität
+
+roles:                             # Rollenfamilien für Recherche und Bewertung (freie Listen)
+  high_priority:                   # die eigentlichen Zielrollen
+    - "<ZIELROLLE 1>"
+    # - Projektmanager
+    # - Technical Project Manager
+  also_relevant: []                # passt auch, aber nachrangig
+  ai: []                           # reine KI-Rollen (zählen gegen max_ai_share)
+
+focus:                             # optionale Feinsteuerung der Reihenfolge
+  penalty: 0.0                     # Abzug für Titel aus deprioritized_titles (0 = aus)
+  note: ""                         # Text, der beim Abzug im Dashboard steht (leer = Standardtext)
+  deprioritized_titles: []         # Titelteile (klein, ohne Umlaute), die nachrangig sind, z. B. ["sachbearbeiter"]
+  exempt_terms: []                 # Titelteile, die den Abzug aufheben
+  lower_priority_roles: []         # Hinweis für die Bewertung: Rollen, die nur bei Mangel an Besserem zählen
+
+title_include:                     # ein ATS-Treffer wird nur behalten, wenn sein Titel einen dieser Teile enthält (klein)
+  - "<SUCHBEGRIFF IM TITEL>"
+  # - projektmanager
+  # - project manager
+title_exclude:                     # Titelteile, die eine Stelle sofort ausschließen (klein)
+  - intern
+  - praktik
+  - werkstudent
+  - working student
+  - thesis
+  - abschlussarbeit
+  - trainee
+  - ausbildung
+  - duales studium
+  - apprentice
+
+core_role_terms: []                # Titelteile der Kernrollen: ein Alert-Vorab-Score ab 6.0 muss dort anhand der
+                                   # Originalanzeige bewertet werden, z. B. ["projekt", "project"]; leer = die Begriffe aus title_include
+banned_reason_patterns: []         # eigene unzulässige Aussortier-Begründungen (reguläre Ausdrücke); immer aktiv sind
+                                   # "KI-Obergrenze" als Grund und Vermutungen ("vermutlich", "probably")
+priority_places: []                # Orte (klein), an denen eine Zielrolle aus einer Alert-Mail immer anhand der
+                                   # Originalanzeige bewertet wird; leer = die Orte der Region mit priority 1
+work_permit_countries: []          # Länderkürzel, in denen du ohne Visum arbeiten darfst, z. B. [DE, AT]
+                                   # (dort steht im Bericht "n/a" statt "not stated" bei Visum)
+successfactors_cities: []          # Ortsliste für SAP-SuccessFactors-Karriereseiten; leer = alle Orte aus lanes
+
+segments: []                       # Rollengruppen für Filter und Reiter im Dashboard, in dieser Reihenfolge geprüft.
+# Jeder Eintrag: id (klein, ohne Leerzeichen), label (Anzeigename), pattern (regulärer Ausdruck auf den
+# Titel in Kleinbuchstaben), optional own_tab: true (eigener Reiter statt "Neu"). "ai" (KI-Rolle) und
+# "other" (Rest) gibt es immer. Beispiel:
+# segments:
+#   - {id: "projekt", label: "Projekt & Programm", pattern: "program|project|projekt|\\bpmo\\b"}
+#   - {id: "beratung", label: "Beratung & Prozesse", pattern: "consult|berat|process|prozess"}
+#   - {id: "remote", label: "Remote", pattern: "\\bremote\\b|home.?office", own_tab: true}
+
+lanes:                             # Suchregionen; je Region ein Recherche-Briefing (09_Documentation/research_briefs)
+  A_heimat:
+    country: "<LAND, z. B. DE>"    # ISO-Kürzel; steuert Länderfilter der ATS-Abfragen und das Gehaltsziel
+    priority: 1                    # 1 = wichtigste Region; ihre Orte haben Vorrang bei Stellen mit mehreren Orten
+    locations:                     # Orte in Kleinbuchstaben, so wie sie in Anzeigen stehen
+      - "<ORT 1>"
+      # - musterstadt
+    note: ""                       # freie Anmerkung für die Recherche
+  # B_weitere_region:
+  #   country: AT
+  #   priority: 2
+  #   locations: [wien, graz]
+  #   extra_terms: []              # zusätzliche Suchbegriffe nur für diese Region
+  #   segment: ""                  # optional: Stellen dieser Region bekommen fest dieses Segment
+  #   note: "nur bei sehr hoher Passung"
+
+changelog:                         # jede Änderung an harten Regeln mit Datum
+  - {date: "<JJJJ-MM-TT>", change: "Profil angelegt"}

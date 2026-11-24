@@ -1,0 +1,7 @@
+python-docx>=1.1
+PyYAML>=6.0
+certifi>=2024.2
+keyring>=24.0
+tzdata>=2024.1; sys_platform == "win32"
+# optional: PDF through Microsoft Word (needed on Windows for pdf_engine word; a second way on the Mac)
+docx2pdf>=0.1.8; sys_platform == "darwin" or sys_platform == "win32"

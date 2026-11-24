@@ -1,0 +1,31 @@
+# Vorlage für <Arbeitsordner>/.gitignore (nur nötig, wenn der Ordner mit git gesichert wird).
+# Persönliche Unterlagen, Zugangsdaten und Zwischenstände bleiben außerhalb der Versionsverwaltung.
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Zugangsdaten und lokale Umgebungen (Passwörter gehören in den Schlüsselbund, nie in eine Datei)
+.env
+.env.*
+
+# Betriebssystem und Office
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*.docx
+
+# Lebenslauf, Zeugnisse und erzeugte Lebensläufe
+00_Input/Lebenslauf/*
+!00_Input/Lebenslauf/README.md
+04_CVs/
+
+# Zwischenstände der Läufe
+07_Logs/runs/*/dashboard_in/
+07_Logs/runs/*/dashboard_out/
+07_Logs/mail_bridge.log
+07_Logs/apply_local/
+
+# Browser-Werkzeuge
+.gstack/
