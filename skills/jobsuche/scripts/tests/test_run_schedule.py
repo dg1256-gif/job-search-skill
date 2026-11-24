@@ -95,7 +95,8 @@ class Start(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "POSIX launcher")
     def test_launcher_file(self):
-        script, opener = rl._launcher(["/opt/test/bin/claude", "/jobsuche lauf"])
+        with mock.patch.object(rl.shutil, "which", return_value="/usr/bin/xterm"):    # a headless machine has no terminal
+            script, opener = rl._launcher(["/opt/test/bin/claude", "/jobsuche lauf"])
         text = script.read_text(encoding="utf-8")
         self.assertTrue(text.startswith("#!/bin/sh\n"))
         self.assertIn("exec /opt/test/bin/claude '/jobsuche lauf'", text)
@@ -125,7 +126,7 @@ class Schedule(unittest.TestCase):
             plist = plistlib.loads(out["inhalt"].encode("utf-8"))
             self.assertEqual(plist["Label"], f"com.jobsuche.{job}")
             self.assertIn(key, plist)
-            self.assertTrue(out["datei"].endswith(f"Library/LaunchAgents/com.jobsuche.{job}.plist"))
+            self.assertTrue(out["datei"].replace("\\", "/").endswith(f"Library/LaunchAgents/com.jobsuche.{job}.plist"))
             self.assertIn("launchctl bootstrap", out["befehle"][1])
             self.assertEqual(plist["ProgramArguments"][0], str(si.cfg.venv_python()))
         self.assertEqual(plistlib.loads(si.mac_plist("daily").encode())["StartCalendarInterval"], [{"Hour": 7, "Minute": 30}])

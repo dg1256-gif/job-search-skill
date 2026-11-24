@@ -112,8 +112,12 @@ def mac_plist(job, suffix="", templates=None):
     return text
 
 
+def _uid():
+    return os.getuid() if hasattr(os, "getuid") else 0      # Windows has none; there only the dry run gets here
+
+
 def mac_install(job, suffix, dry, templates):
-    path, label, uid = mac_plist_path(job, suffix), mac_label(job, suffix), os.getuid()
+    path, label, uid = mac_plist_path(job, suffix), mac_label(job, suffix), _uid()
     text = mac_plist(job, suffix, templates)
     steps = [["launchctl", "bootout", f"gui/{uid}/{label}"], ["launchctl", "bootstrap", f"gui/{uid}", str(path)]]
     if dry:
@@ -132,7 +136,7 @@ def mac_install(job, suffix, dry, templates):
 
 
 def mac_remove(job, suffix, dry):
-    path, label, uid = mac_plist_path(job, suffix), mac_label(job, suffix), os.getuid()
+    path, label, uid = mac_plist_path(job, suffix), mac_label(job, suffix), _uid()
     step = ["launchctl", "bootout", f"gui/{uid}/{label}"]
     if dry:
         return {"job": job, "probe": True, "befehle": [shlex.join(step)], "loescht": str(path)}
@@ -146,7 +150,7 @@ def mac_remove(job, suffix, dry):
 
 def mac_status(job, suffix):
     label = mac_label(job, suffix)
-    code, _ = _run(["launchctl", "print", f"gui/{os.getuid()}/{label}"])
+    code, _ = _run(["launchctl", "print", f"gui/{_uid()}/{label}"])
     return {"job": job, "name": label, "datei_vorhanden": mac_plist_path(job, suffix).exists(), "geladen": code == 0}
 
 
