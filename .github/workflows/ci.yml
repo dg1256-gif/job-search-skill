@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.12"]
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+    env:
+      PYTHONUTF8: "1"
+    defaults:
+      run:
+        shell: bash
+        working-directory: skills/jobsuche/scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install requirements
+        run: python -m pip install -r requirements.txt
+      - name: Unit tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Selftests of the standalone scripts
+        run: |
+          python humanizer.py selftest
+          python posting_guard.py selftest
+          python ats_check.py selftest
+          python after_apply.py selftest
+          python dashboard_local.py selftest
+      - name: Selftest of jobsearch.py in a fresh workspace
+        run: |
+          python setup.py init --workspace "$RUNNER_TEMP/ws" --no-venv || python setup.py init --workspace "$RUNNER_TEMP/ws"
+          JOBSUCHE_ROOT="$RUNNER_TEMP/ws" python "$RUNNER_TEMP/ws/08_Scripts/jobsearch.py" selftest
+
+  no-personal-data:
+    name: No personal data or secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Mail addresses and absolute home paths
+        run: |
+          if grep -rnIE '[A-Za-z0-9._%+-]+@(gmail|t-online|gmx|web|outlook|icloud|posteo)\.[a-z]+' skills \
+              | grep -vE '(beispiel|example|muster|name|vorname|nachname|max|erika|user|ich|du)[A-Za-z0-9._%+-]*@' ; then
+            echo "Mail-Adresse gefunden – nur Platzhalter verwenden"; exit 1
+          fi
+          if grep -rnIE '/Users/[A-Za-z0-9]+/|C:\\Users\\[A-Za-z0-9]+\\' skills | grep -vE '<|Name|name|DU|du/' ; then
+            echo "Absoluter Benutzerpfad gefunden"; exit 1
+          fi

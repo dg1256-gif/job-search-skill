@@ -15,6 +15,9 @@ Aufgaben in Worten statt als Befehl:
 | „Anschreiben / Lebenslauf für …“ | `skills/jobsuche/references/anschreiben-cv.md` und `humanizer.md` |
 | „Bewerbung ausfüllen“ | `skills/jobsuche/references/formular.md` |
 | „Dashboard“ | `skills/jobsuche/references/dashboard.md` |
+| „nachfassen“ / „Auswertung meiner Bewerbungen“ | `skills/jobsuche/references/nach-der-bewerbung.md` |
+| „Gespräch / Interview vorbereiten“ | `skills/jobsuche/references/interview.md` |
+| „Lebenslauf für Bewerbungssysteme prüfen“ | `skills/jobsuche/references/anschreiben-cv.md` (Abschnitt ATS-Prüfung) |
 
 Was in deinem Programm anders ist als in der Anleitung, steht in
 `skills/jobsuche/references/andere-agenten.md`.

@@ -1,0 +1,12 @@
+{
+  "name": "job-search-skill",
+  "owner": { "name": "dg1256-gif" },
+  "metadata": { "description": "Jobsuche-Skill für Claude Code" },
+  "plugins": [
+    {
+      "name": "jobsuche",
+      "source": "./",
+      "description": "Persönlicher Jobsuche-Assistent (deutsch): suchen, bewerten, Unterlagen schreiben, Formulare ausfüllen, nachfassen, auswerten."
+    }
+  ]
+}

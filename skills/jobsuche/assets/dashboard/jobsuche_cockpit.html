@@ -141,6 +141,10 @@ summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.
 .stattable th, .stattable td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .stattable th:first-child, .stattable td:first-child { text-align: left; }
 .stattable th { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
+.fbar { width: 40%; }
+.fbar span { display: block; height: 8px; min-width: 1px; border-radius: 2px; background: var(--accent); }
+.followup { margin-bottom: 10px; }
+.followup td:last-child { text-align: right; white-space: nowrap; }
 .twocol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 10px; }
 @media (max-width: 760px) {
   .job { grid-template-columns: 64px minmax(0, 1fr); }
@@ -236,7 +240,9 @@ function buildConfig(raw) {
   DEFAULT_RULES.forEach((r) => { if (!repatterned.has(r[0])) rules.push(r); });
   return { portals, portalById: new Map(portals.map((p) => [p.id, p])), segments, segById: new Map(segments.map((x) => [x.id, x])), rules,
     owner: cleanLabel(raw.owner_label, "", 60), token: typeof raw.trigger_token === "string" && TOKEN_RE.test(raw.trigger_token) ? raw.trigger_token : "",
-    language: raw.language === "de" || raw.language === "en" ? raw.language : "" };
+    language: raw.language === "de" || raw.language === "en" ? raw.language : "",
+    followupDays: Number.isInteger(raw.followup_days) && raw.followup_days > 0 && raw.followup_days <= 180 ? raw.followup_days : 14,
+    followupMax: Number.isInteger(raw.followup_max) && raw.followup_max > 0 && raw.followup_max <= 9 ? raw.followup_max : 2 };
 }
 let cfg = buildConfig(null);
 // A segment with own_tab gets its own tab (right after "Neu"), every portal one tab for its alert jobs.
@@ -416,6 +422,8 @@ function jobRow(j) {
   if (j.is_ai) meta.append(el("span", "chip", "AI-Rolle"));
   if (j.recommendation && board(j) !== "portal") meta.append(el("span", "chip " + (j.recommendation === "APPLY" ? "good" : ""), j.recommendation));
   if (j.applied_at) meta.append(el("span", "chip good", "beworben am " + fmtDate(j.applied_at)));
+  if (j.followup_at && APPLIED.includes(board(j))) meta.append(el("span", "chip", "nachgefasst am " + fmtDate(j.followup_at)));
+  if (followupDue(j)) meta.append(el("span", "chip warn", "Nachfassen fällig"));
   if (j.status_note) meta.append(el("span", "chip acc", j.status_note));
   const lt = state.letters.get(j.key);
   if (lt && LETTER_STATUS[lt.status]) meta.append(el("span", "chip " + LETTER_STATUS[lt.status][0], "Anschreiben " + LETTER_STATUS[lt.status][1]));
@@ -587,12 +595,62 @@ function statRow(label, js) {
   [label, n, talk, no, open, n ? Math.round(100 * (talk + no) / n) + " %" : "–"].forEach((v) => tr.append(el("td", "", String(v))));
   return tr;
 }
-function statTable(title, groups) {
+// ---- Follow-up: an application without an answer for cfg.followupDays days is due for a reminder, at most
+// cfg.followupMax times. The page only records that the user followed up; it writes and sends nothing.
+function followupDue(j) {
+  if (board(j) !== "applied" || !j.applied_at || j.replied_at) return null;
+  const sent = Number(j.followup_count) || 0;
+  if (sent >= cfg.followupMax) return null;
+  const since = daysSince(j.followup_at || j.applied_at);
+  return since !== null && since >= cfg.followupDays ? { waiting: daysSince(j.applied_at), sent } : null;
+}
+function markFollowup(j) {
+  const patch = { followup_at: new Date().toISOString().slice(0, 10), followup_count: (Number(j.followup_count) || 0) + 1 };
+  save(j.key, patch, (before) => toast("Nachfassen vermerkt", () => save(j.key, before, null)));
+}
+function followupPanel() {
+  const due = [...state.jobs.values()].map((j) => [j, followupDue(j)]).filter((x) => x[1]).sort((a, b) => b[1].waiting - a[1].waiting);
+  if (!due.length) return null;
+  const box = el("section", "panel followup"); box.append(el("h3", "", "Nachfassen fällig (" + due.length + ")"));
+  const t = el("table", "stattable");
+  due.forEach(([j, d]) => {
+    const tr = el("tr"), act = el("td"), b = el("button", "btn", "Nachgefasst");
+    b.type = "button"; b.addEventListener("click", () => markFollowup(j)); act.append(b);
+    tr.append(el("td", "", (j.company || "") + " – " + (j.title || "")),
+      el("td", "", "beworben am " + fmtDate(j.applied_at) + ", seit " + d.waiting + " Tagen ohne Antwort" + (d.sent ? ", " + d.sent + "× nachgefasst" : "")
+        + (gone(j) ? ", Anzeige nicht mehr online" : "")), act);
+    t.append(tr);
+  });
+  box.append(t, el("p", "hint", "Erinnerung nach " + cfg.followupDays + " Tagen ohne Antwort, höchstens " + cfg.followupMax
+    + "-mal je Bewerbung. Einen Entwurf für die Nachfrage schreibt der Assistent („Jobsuche nachfassen“); gesendet wird nichts."));
+  return box;
+}
+const SCORE_BANDS = [[9, "9,0 und mehr"], [8.5, "8,5 bis 8,9"], [8, "8,0 bis 8,4"], [7, "7,0 bis 7,9"], [0.01, "unter 7,0"], [-1, "ohne Bewertung"]];
+function scoreBand(j) { const sc = Number(j.score) || 0; return SCORE_BANDS.find((b) => sc >= b[0])[1]; }
+// From application to outcome; each line as a share of all applications.
+function funnelPanel(applied) {
+  const n = applied.length, is = (b) => (j) => board(j) === b;
+  const silent = applied.filter((j) => board(j) === "applied" && !j.replied_at && j.applied_at && daysSince(j.applied_at) >= 30).length;
+  const rows = [["Beworben", n], ["Eingang bestätigt oder beantwortet", applied.filter((j) => j.confirmed_at || j.replied_at || board(j) !== "applied").length],
+    ["Gespräch", applied.filter((j) => ["interview", "offer"].includes(board(j))).length], ["Zusage", applied.filter(is("offer")).length],
+    ["Absage", applied.filter(is("declined")).length], ["Ohne Antwort seit 30 Tagen", silent]];
+  const box = el("section", "panel funnel"); box.append(el("h3", "", "Von der Bewerbung zum Ergebnis"));
+  const t = el("table", "stattable");
+  rows.forEach(([label, v]) => {
+    const tr = el("tr"), bar = el("td", "fbar"), fill = el("span");
+    fill.style.width = (n ? Math.round(100 * v / n) : 0) + "%"; bar.append(fill);
+    tr.append(el("td", "", label), el("td", "", String(v)), el("td", "", n ? Math.round(100 * v / n) + " %" : "–"), bar);
+    t.append(tr);
+  });
+  box.append(t); return box;
+}
+function statTable(title, groups, order) {
   const box = el("section", "panel"); box.append(el("h3", "", title));
   const t = el("table", "stattable"), head = el("tr");
   ["", "Beworben", "Gespräch/Zusage", "Absage", "Offen", "Antwortquote"].forEach((h) => head.append(el("th", "", h)));
   t.append(head);
-  [...groups.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([k, js]) => t.append(statRow(k, js)));
+  [...groups.entries()].sort((a, b) => order ? order.indexOf(a[0]) - order.indexOf(b[0]) : b[1].length - a[1].length)
+    .forEach(([k, js]) => t.append(statRow(k, js)));
   box.append(t); return box;
 }
 function weekChart(applied) {
@@ -640,13 +698,17 @@ function statsView() {
   [[applied.length, "Bewerbungen"], [Math.round(100 * conf / applied.length) + " %", "mit Rückmeldung der Firma"],
    [talk, "Gespräche / Zusagen"], [no, "Absagen"], [median === null ? "–" : median + " Tage", `bis zur Antwort (Median aus ${waits.length})`]]
     .forEach(([v, l]) => { const t = el("div", "tile"); t.append(el("b", "", String(v)), el("span", "", l)); tiles.append(t); });
-  const byOrigin = new Map(), bySeg = new Map();
+  const byOrigin = new Map(), bySeg = new Map(), byBand = new Map();
   applied.forEach((j) => {
+    const sb = scoreBand(j); (byBand.get(sb) || byBand.set(sb, []).get(sb)).push(j);
     const o = originLabel(j.origin); (byOrigin.get(o) || byOrigin.set(o, []).get(o)).push(j);
     const sg = segLabel(j) || "Sonstige"; (bySeg.get(sg) || bySeg.set(sg, []).get(sg)).push(j);
   });
   const two = el("div", "twocol"); two.append(statTable("Nach Herkunft", byOrigin), statTable("Nach Rollenfamilie", bySeg));
-  wrap.append(tiles, weekChart(applied), two,
+  const due = followupPanel();
+  if (due) wrap.append(due);
+  const three = el("div", "twocol"); three.append(funnelPanel(applied), statTable("Nach Bewertung", byBand, SCORE_BANDS.map((b) => b[1])));
+  wrap.append(tiles, three, weekChart(applied), two,
     el("p", "rule", "Antwortquote = Gespräch, Zusage oder Absage im Verhältnis zu allen Bewerbungen. Eingangsbestätigungen zählen nicht als Antwort."));
   return wrap;
 }
@@ -673,7 +735,8 @@ function render() {
     main.replaceChildren(e);
     return;
   }
-  main.replaceChildren(...rows.map(jobRow));
+  const nudge = curTab() === "applied" ? followupPanel() : null;
+  main.replaceChildren(...(nudge ? [nudge] : []), ...rows.map(jobRow));
 }
 
 let toastTimer = null;

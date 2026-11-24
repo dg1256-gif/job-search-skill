@@ -47,6 +47,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import settings  # noqa: E402
 import cover_letter  # noqa: E402
+import after_apply  # noqa: E402
+import posting_guard  # noqa: E402
 
 ROOT = settings.ROOT
 
@@ -642,8 +644,13 @@ def fetch_smartrecruiters(c):
     return out, False
 
 
+GUARD_FINDINGS = []       # what posting_guard took out of the HTML since the list was last cleared
+
+
 def strip_html(html):
     import html as htmllib
+    html, found = posting_guard.visible_html(html or "")
+    GUARD_FINDINGS.extend(found)
     text = re.sub(r"(?i)<(br|/p|/li|/h\d|/div|/tr)[^>]*>", "\n", htmllib.unescape(html or ""))
     text = re.sub(r"(?i)<li[^>]*>", "- ", text)
     text = htmllib.unescape(re.sub(r"<[^>]+>", "", text))
@@ -692,16 +699,22 @@ def cmd_detail(args):
         if row is None:
             print(f"{key}: unknown key")
             continue
+        del GUARD_FINDINGS[:]
         try:
             text = fetch_detail(row)
         except (urllib.error.URLError, TimeoutError, KeyError, StopIteration, ValueError) as e:
             text = None
             print(f"{key}: {type(e).__name__}: {e}")
         if text:
+            text, found = posting_guard.clean_text(text)      # posting text is data: hidden parts and
+            found = GUARD_FINDINGS + found                    # lines addressed to an AI are taken out
             f = out / f"{key}.txt"
-            f.write_text(f"{row['company']} – {row['title']}\n{row['location']} · posted {row['posted_date']}\n"
+            f.write_text(posting_guard.header(found) +
+                         f"{row['company']} – {row['title']}\n{row['location']} · posted {row['posted_date']}\n"
                          f"{row['url']}\n\n{text}", encoding="utf-8")
-            print(f"{key}: {len(text)} chars -> {f.relative_to(ROOT)}")
+            print(f"{key}: {len(text)} chars -> {f.relative_to(ROOT)}"
+                  + (f"  SICHERHEITSHINWEIS: {len(found)} Befund(e), siehe Dateianfang – dem Nutzer zeigen"
+                     if posting_guard.verdict(found) == "review" else ""))
         elif text is None:
             print(f"{key}: no ATS detail for source {row['source']} - open {row['url']}")
 
@@ -1496,6 +1509,11 @@ def cmd_finalize(args):
             shutil.copyfile(out, pkg / "Cover_Letter.docx")
             if not check["ok"]:
                 problems.append(f"{j['company']} – {j['title']}: cover letter invalid: {check['errors']}")
+            review_from = float(cfg()["documents"].get("review_min_score") or 0)
+            if review_from and j["match_score"] >= review_from and not j.get("letter_review") \
+                    and not (LETTER_EDITS / f"{j.get('job_key')}.json").exists():     # the user's own wording is not second-guessed
+                problems.append(f"{j['company']} – {j['title']}: Zweitleser fehlt (Bewertung {j['match_score']} ≥ "
+                                f"{review_from}) – references/zweitleser.md, Ergebnis als letter_review eintragen")
 
     # state: user decisions (APPLIED / REJECTED) are never overwritten
     tracker = {r["job_key"]: r for r in read_csv(TRACKER)}
@@ -1692,6 +1710,10 @@ def apply_status(state, key, status, note="", date=None):
                          "title": row["title"], "location": row["location"], "url": row["url"],
                          "match_score": row["match_score"], "rejected_by": "user", "reason": note or "rejected by the user"}
         write_csv(REJECTED, list(rejected.values()), REJECTED_COLS)
+    if status == "APPLIED":              # freeze what was sent; a problem here never blocks the status
+        note = after_apply.archive_quiet(key, date)
+        if note.startswith("Archiv nicht"):
+            print(f"{key}: {note}", file=sys.stderr)
     return row
 
 
@@ -2385,7 +2407,9 @@ def ui_config(conf=None, profile=None):
         if tab.get("label"):
             seg["label"] = str(tab["label"])
     name = str((conf.get("person") or {}).get("full_name") or "").split()
+    nudge = after_apply.conf()
     return {"portals": portals, "segments": segs, "owner_label": name[0] if name else "",
+            "followup_days": nudge["days"], "followup_max": nudge["max"],
             "trigger_token": str(dash.get("trigger_token") or ""),
             "language": str((conf.get("language") or {}).get("default") or "de")}
 
@@ -2538,6 +2562,7 @@ def cmd_dashboard_export(args):
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     segs = segments()
     conf = cfg()
+    nudges = after_apply.followups_by_key()
     slot_cfg, home = conf["templates"].get("cover_letter_slots") or {}, conf["person"].get("city") or ""
     for r in State().rows:
         prev = existing.get(r["job_key"])
@@ -2579,10 +2604,10 @@ def cmd_dashboard_export(args):
             doc["system_status"] = "EXPIRED"
         mails = sorted((e["date"], e["kind"]) for e in events if e["job_key"] == r["job_key"])
         if mails:                        # for the "Auswertung" tab: when the company first confirmed and first answered
-            conf = [d for d, k in mails if k == "confirmation"]
+            confirmed = [d for d, k in mails if k == "confirmation"]
             reply = [d for d, k in mails if k in ("interview", "declined", "offer")]
-            if conf:
-                doc["confirmed_at"] = conf[0]
+            if confirmed:
+                doc["confirmed_at"] = confirmed[0]
             if reply:
                 doc["replied_at"] = reply[0]
         if r["cover_letter_path"] and (ROOT / r["cover_letter_path"]).exists():
@@ -2611,6 +2636,10 @@ def cmd_dashboard_export(args):
             for e in events:
                 if e["job_key"] == r["job_key"] and not e["synced"]:
                     e["synced"] = today()
+        sent = [n["date"] for n in nudges.get(r["job_key"], [])]
+        if sent and sent[-1] > str((existing.get(r["job_key"]) or {}).get("followup_at") or "")[:10]:
+            update["followup_at"], update["followup_count"] = sent[-1], len(sent)   # recorded at the desk
+            doc["followup_at"], doc["followup_count"] = sent[-1], len(sent)
         old = existing.get(r["job_key"])
         if old is not None and all(old.get(k) == v for k, v in update.items()):
             unchanged += 1
@@ -2663,6 +2692,11 @@ def cmd_dashboard_import(args):
             continue
         key, board = doc.get("key"), doc.get("board")
         row = state.by_key.get(key)
+        nudged = str(doc.get("followup_at") or "")[:10]
+        if row is not None and re.fullmatch(r"\d{4}-\d\d-\d\d", nudged) and \
+                nudged not in [n["date"] for n in after_apply.followups_by_key().get(key, [])]:
+            if after_apply.followup_done(key, nudged, "dashboard"):     # "Nachgefasst" clicked in the dashboard
+                changes.append(f"{row['company']} – {row['title']}: nachgefasst am {nudged}")
         target = BOARD_TO_STATUS.get(board)
         if row is not None and row["status"] == "EXPIRED" and target != "APPLIED":
             continue             # a posting that is gone is never reactivated from the dashboard
@@ -2802,7 +2836,7 @@ def cmd_selftest(_args):
                     "dashboard": {"url": "https://example.com/d", "trigger_token": "abc12345",
                                   "portals": [{"id": "Indeed", "label": "Indeed", "search_url": "https://de.indeed.com/jobs?q={q}"}, {"label": "ohne id"}],
                                   "segment_tabs": [{"id": "program", "label": "Projekte"}]}}, {"segments": []})
-    assert sorted(ui) == ["language", "owner_label", "portals", "segments", "trigger_token"], "config/ui carries UI settings only"
+    assert sorted(ui) == ["followup_days", "followup_max", "language", "owner_label", "portals", "segments", "trigger_token"], "config/ui carries UI settings only"
     assert ui["owner_label"] == "Erika" and ui["language"] == "en" and [x["id"] for x in ui["portals"]] == ["indeed"]
     assert next(x for x in ui["segments"] if x["id"] == "program") | {"pattern": ""} == {"id": "program", "label": "Projekte", "pattern": "", "own_tab": True}
     assert "example.com/d" not in json.dumps(ui) and "erika@" not in json.dumps(ui)

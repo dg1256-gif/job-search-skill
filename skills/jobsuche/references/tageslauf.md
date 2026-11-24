@@ -134,7 +134,8 @@ etabliertes Portal > Suchmaschine.
 ## 6. Unterlagen
 
 Für jede Stelle mit Empfehlung APPLY: `references/anschreiben-cv.md`, mit Humanizer
-(`references/humanizer.md`). Ohne bestandene Prüfung kein fertiges Anschreiben.
+(`references/humanizer.md`). Ohne bestandene Prüfung kein fertiges Anschreiben. Ab
+`documents.review_min_score` liest danach ein Zweitleser gegen (`references/zweitleser.md`).
 
 ## 7. Abschließen
 
@@ -171,7 +172,10 @@ Sonst überschreibt der Lauf, was der Nutzer währenddessen geändert hat.
    eine Unternehmens-Mail (Schritt 1b) verschiebt eine Stelle.
 4. Was der Export geändert hat (`02_State/status_events.csv`), sichern wie in 1.
 5. **Melden:** exakt den Inhalt von `03_Daily_Reports/<Jahr>/DATE/Morning_Message_DATE.md`,
-   danach eine Zeile mit dem Dashboard-Link und gegebenenfalls Problemen.
+   danach eine Zeile mit dem Dashboard-Link und gegebenenfalls Problemen. Nennt
+   `$PY 08_Scripts/after_apply.py followups` fällige Bewerbungen, eine weitere Zeile:
+   „Nachfassen fällig: N (Firma, Firma …)“. Entwürfe dazu nur auf Wunsch
+   (`references/nach-der-bewerbung.md`).
 
 ## Lauf in der Cloud statt am Rechner
 
@@ -188,7 +192,10 @@ Sonst überschreibt der Lauf, was der Nutzer währenddessen geändert hat.
 - **„Ich habe mich bei X beworben“ / „kein Interesse“ / „merken“:**
   `$PY 08_Scripts/jobsearch.py set-status --key KEY --status APPLIED|REJECTED|WATCHLIST --note "…"`,
   danach Schritt 8.2–8.3 (Dashboard aktualisieren). Den `KEY` mit einer Suche in
-  `02_State/jobs_master.csv` finden, nie die ganze Datei ausgeben.
+  `02_State/jobs_master.csv` finden, nie die ganze Datei ausgeben. Bei APPLIED archiviert
+  das Skript, was gesendet wurde (`references/nach-der-bewerbung.md`).
+- **Nachfassen, Auswertung:** `references/nach-der-bewerbung.md`.
+- **Gespräch vorbereiten:** `references/interview.md`.
 - **Eine Stelle bewerten:** `references/bewertung.md`, Abschnitt Einzelstelle.
 - **Anschreiben neu schreiben:** `references/anschreiben-cv.md`.
 

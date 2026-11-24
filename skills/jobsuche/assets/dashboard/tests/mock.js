@@ -34,6 +34,9 @@
     base("k_low_old", "Stelle Low Score Alt", { board: "low", system_status: "REVIEWED", score: 6.1, recommendation: "SKIP", report_date: iso(40), first_seen: iso(40) }),
     base("k_step", "Stelle Stepstone", { board: "portal", system_status: "REVIEWED", origin: "stepstone", score_basis: "alert" }),
     base("k_remote", "Stelle Remote", { segment: "remote" }),
+    base("k_follow", "Stelle Nachfassen", { board: "applied", system_status: "APPLIED", applied_at: iso(20), confirmed_at: iso(19), score: 8.7 }),
+    base("k_follow_max", "Stelle Nachfassen Erledigt", { board: "applied", system_status: "APPLIED", applied_at: iso(60), followup_at: iso(20), followup_count: 2 }),
+    base("k_follow_answered", "Stelle Nachfassen Beantwortet", { board: "declined", system_status: "APPLIED", applied_at: iso(40), replied_at: iso(30), score: 7.2 }),
     base("k_apply", "Stelle Ausfüllen", { cover_letter_name: "Anschreiben_Test.docx", cover_letter_b64: window.__DOCX_FIXTURE || "UEsDBA==", apply_url: "https://example.com/jobs/1",
       letter: window.__LETTER_FIXTURE, letter_slots: { remove: [2] } })
   ].forEach((d) => { docs[d.key] = d; });

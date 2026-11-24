@@ -370,6 +370,31 @@
   let threw = false;
   try { await buildLetterDocx({ cover_letter_b64: window.__DOCX_FIXTURE, letter: { language: "en" }, letter_slots: { subject: 99 } }, draft, when); } catch (e) { threw = true; }
   results.push(["Unpassende letter_slots brechen den Neubau ab (Rückfall auf gespeicherte Datei)", threw, ""]);
+  // follow-up reminders and the extended statistics
+  try {
+  await setConfig(copy(CONFIG));
+  await tab("stats");
+  const panel = () => document.querySelector("section.followup");
+  const dueText = () => (panel() ? panel().textContent : "");
+  results.push(["Nachfassen: fällige Bewerbung in der Auswertung", /Nachfassen fällig \(1\)/.test(dueText()) && /Firma k_follow – Stelle Nachfassen/.test(dueText()), dueText().slice(0, 120)]);
+  results.push(["Nachfassen: Höchstzahl und beantwortete Bewerbung fehlen", !/Erledigt|Beantwortet/.test(dueText()), dueText().slice(0, 160)]);
+  results.push(["Nachfassen: frische Bewerbung noch nicht fällig", !/k_gone_applied|k_applied –/.test(dueText()), ""]);
+  results.push(["Auswertung: Trichter und Tabelle nach Bewertung", !!document.querySelector("section.funnel") && /Ohne Antwort seit 30 Tagen/.test($id("list").textContent) && /Nach Bewertung/.test($id("list").textContent) && /8,5 bis 8,9/.test($id("list").textContent), ""]);
+  await tab("applied");
+  results.push(["Nachfassen: Hinweis im Reiter „Beworben“ und Chip an der Stelle", !!panel() && /Nachfassen fällig/.test(rowOf("Stelle Nachfassen").textContent) && !/Nachfassen fällig/.test(rowOf("Stelle Nachfassen Erledigt").textContent), ""]);
+  panel().querySelector("button.btn").click();
+  await sleep(150);
+  const fdoc = window.__docs.k_follow;
+  results.push(["Nachfassen: Klick vermerkt Datum und Zähler", fdoc.followup_count === 1 && fdoc.followup_at === new Date().toISOString().slice(0, 10) && fdoc.board === "applied", JSON.stringify([fdoc.followup_at, fdoc.followup_count])]);
+  await tab("applied");
+  results.push(["Nachfassen: danach nicht mehr fällig, Chip „nachgefasst am“", !panel() && /nachgefasst am/.test(rowOf("Stelle Nachfassen").textContent), dueText().slice(0, 80)]);
+  const C3 = copy(CONFIG); C3.followup_days = 4; C3.followup_max = 3;
+  await setConfig(C3); await tab("applied");
+  results.push(["Nachfassen: Frist und Höchstzahl aus der Konfiguration", /Stelle Beworben Offline/.test(dueText()) && /Erledigt/.test(dueText()) && /Anzeige nicht mehr online/.test(dueText()), dueText().slice(0, 200)]);
+  const cf = buildConfig({ followup_days: "7", followup_max: 0 });
+  results.push(["Nachfassen: ungültige Werte fallen auf 14 Tage / 2-mal zurück", cf.followupDays === 14 && cf.followupMax === 2, ""]);
+  await setConfig(copy(CONFIG));
+  } catch (e) { results.push(["Nachfassen: Testblock läuft durch", false, String(e && e.stack || e).slice(0, 300)]); }
   results.push(["Keine JS-Fehler", !(window.__errors || []).length, (window.__errors || []).join(" | ")]);
   window.__results = results;
   document.title = "DONE";

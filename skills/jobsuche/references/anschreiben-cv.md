@@ -75,7 +75,9 @@ findet, gilt sie als eingerichtet.
    Vorlage etwas anderes als die Felder geändert hätte. Dann den Text ändern, nicht die
    Prüfung umgehen. Passt der Text nicht auf die Seite: kürzen, nie Schrift oder Ränder
    verkleinern.
-7. Einmal gegen das Profil gegenlesen. Dem Nutzer Pfad und Text nennen.
+7. Einmal gegen das Profil gegenlesen. Ab `documents.review_min_score` (Standard 8.5)
+   liest zusätzlich ein Zweitleser gegen, der den Text nicht geschrieben hat
+   (`references/zweitleser.md`). Dem Nutzer Pfad und Text nennen.
 
 Ein Anschreiben, das der Nutzer im Dashboard-Editor bearbeitet hat, gehört ihm: Es wird
 neu gebaut und geprüft, aber nie umformuliert (`references/tageslauf.md`, Schritt 1).
@@ -107,6 +109,34 @@ bricht ab, wenn sich irgendein anderer Absatz ändert.
 Soll etwas am Lebenslauf geändert werden, das darüber hinausgeht (ein Punkt gekürzt, eine
 Station anders gewichtet), schlägst du es dem Nutzer vor und er ändert seine Vorlage. Du
 streichst nie einen vorhandenen Punkt, um Platz zu schaffen.
+
+## ATS-Prüfung des Lebenslaufs (`/jobsuche ats`)
+
+Bewerbungssysteme lesen aus dem PDF nur den Text. Die Prüfung liest das PDF genauso und
+meldet, was dabei verloren geht:
+
+```
+$PY 08_Scripts/ats_check.py check --pdf <Lebenslauf.pdf> [--docx <Lebenslauf.docx>] \
+    [--keywords "Begriff 1, Begriff 2, …" --profile 01_Config/candidate_profile.md]
+```
+
+- Geprüft wird: Text vorhanden (kein Bild-PDF), E-Mail und Telefon lesbar, Name am Anfang,
+  keine zerstörten Zeichen, mit `--docx` auch Vollständigkeit und Lesereihenfolge gegenüber
+  der Word-Datei. Rückgabewert 3 = mindestens ein FEHLER.
+- Für eine Stelle: 15–25 Begriffe aus den Anforderungen der Anzeige als `--keywords`
+  mitgeben (Fachbegriffe, Werkzeuge, Methoden, Abschlüsse – in der Schreibweise der Anzeige).
+  Das Ergebnis hat drei Gruppen:
+  - **im Lebenslauf** – nichts zu tun.
+  - **belegt, fehlt im Lebenslauf** – steht im Profil, aber nicht im PDF. Dem Nutzer als
+    Vorschlag nennen (Zusammenfassung des zugeschnittenen Lebenslaufs oder seine Vorlage).
+  - **nicht belegt** – wird nie in Lebenslauf oder Anschreiben geschrieben (Regel 3). Es
+    gehört als Lücke in die Bewertung.
+- Ein Hinweis zur Lesereihenfolge (Spalten, Tabellen, Textfelder) ist ein Vorschlag an den
+  Nutzer für seine Vorlage. Du baust den Lebenslauf nicht um (Regel 4).
+- Die Prüfung sagt nicht voraus, wie ein bestimmtes System bewertet; sie zeigt nur, was
+  lesbar ankommt. Keine „ATS-Punktzahl“ nennen.
+
+Im Ablauf: nach `cv_tailor.py build` und vor jedem Hochladen (`references/formular.md`).
 
 ## Bewerbungspaket
 

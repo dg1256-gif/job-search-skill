@@ -65,6 +65,12 @@ documents:
   letter_words: [250, 400]
   max_pages: 1
   cv_summary_words: [50, 140]          # erlaubte Länge der neu geschriebenen Zusammenfassung im Lebenslauf
+  review_min_score: 8.5                # ab dieser Bewertung liest ein zweiter Leser das Anschreiben gegen (0 = nie)
+
+followup:
+  days: 14                             # so viele Tage ohne Antwort, dann erinnert das System ans Nachfassen
+  max: 2                               # höchstens so viele Erinnerungen je Bewerbung
+  silent_days: 30                      # ab hier zählt eine Bewerbung in der Auswertung als „ohne Antwort“
 
 browser:
   engine: "auto"                       # auto | gstack | claude_in_chrome

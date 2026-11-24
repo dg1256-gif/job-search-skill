@@ -1,0 +1,10 @@
+{
+  "name": "jobsuche",
+  "description": "Persönlicher Jobsuche-Assistent: tägliche Stellensuche, Bewertung gegen das eigene Profil, Anschreiben und Lebenslauf, Formulare ausfüllen mit Stopp vor dem Absenden, Nachfassen, Interview-Vorbereitung, Auswertung und Dashboard.",
+  "version": "1.1.0",
+  "author": { "name": "dg1256-gif" },
+  "homepage": "https://github.com/dg1256-gif/job-search-skill",
+  "repository": "https://github.com/dg1256-gif/job-search-skill",
+  "license": "MIT",
+  "keywords": ["jobsuche", "job-search", "bewerbung", "anschreiben", "lebenslauf"]
+}

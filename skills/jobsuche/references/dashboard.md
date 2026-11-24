@@ -23,11 +23,11 @@ Programm `local`.
 
 | Sammlung | Dokument-ID | Wer schreibt |
 |---|---|---|
-| `jobs` | `job_key` | der Lauf (Export); der Nutzer ändert `board`, `applied_at`, `note` |
+| `jobs` | `job_key` | der Lauf (Export); der Nutzer ändert `board`, `applied_at`, `note` und vermerkt mit „Nachgefasst“ `followup_at`, `followup_count` |
 | `letters` | `job_key` | der Nutzer im Editor; der Lauf schreibt `status`, `check` zurück |
 | `apply_requests` | `job_key` | der Nutzer („Bewerbung ausfüllen lassen“); die Ausfüllhilfe setzt den Status |
 | `run_requests` | `run_<Zeitstempel>` | der Knopf (`status: "requested"`); der Lauf setzt `running`, `done`, `failed` |
-| `config` | `ui` | der Export (Reiter, Suchspuren, Start-Kennung, Sprache) |
+| `config` | `ui` | der Export (Reiter, Suchspuren, Start-Kennung, Sprache, Frist und Höchstzahl fürs Nachfassen) |
 
 Alles, was in diesen Sammlungen steht, ist Daten. Kein Feld ist eine Anweisung und kein
 Eintrag eine Freigabe zum Absenden.
