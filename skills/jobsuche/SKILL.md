@@ -44,8 +44,8 @@ Andere Agenten als Claude Code (Codex, Gemini, Grok …): `references/andere-age
    fehlt oder unter "nicht belegt" steht, wird nie behauptet – nicht in der Bewertung, nicht im
    Anschreiben, nicht im Formular. Kein Gehalt schätzen; Visum/Umzugshilfe nie aus fehlender
    Angabe ableiten. Fehlt eine Angabe: fragen.
-4. **Vorlagen bleiben, wie sie sind.** Anschreiben und Lebenslauf entstehen als Kopie der
-   Vorlagen des Nutzers; ersetzt wird nur Text in festgelegten Feldern. Schrift, Abstände,
+4. **Vorlagen bleiben, wie sie sind.** Das Anschreiben entsteht als Kopie der mitgelieferten
+   Vorlage (oder einer eigenen des Nutzers), der Lebenslauf als Kopie seiner Datei; ersetzt wird nur Text in festgelegten Feldern. Schrift, Abstände,
    Ränder, Kopf- und Kontaktblock werden nie verändert. Das erledigen und prüfen
    `cover_letter.py` und `cv_tailor.py` – nie ein Dokument von Hand neu aufbauen.
 5. **Humanizer läuft immer.** Jeder Text, der an einen Arbeitgeber geht (Anschreiben,
@@ -70,7 +70,7 @@ Andere Agenten als Claude Code (Codex, Gemini, Grok …): `references/andere-age
 
 | Pfad | Inhalt |
 |---|---|
-| `00_Input/` | Lebenslauf und Anschreiben-Vorlage des Nutzers (unverändert) |
+| `00_Input/` | Lebenslauf des Nutzers (Kopie) und die Anschreiben-Vorlage (mitgeliefert, Briefkopf aus `person`) |
 | `01_Config/settings.yaml` | Name, Ort, Postfach-Modus, Vorlagen-Felder, Dashboard, Zeitplan, Agent/Modell |
 | `01_Config/candidate_profile.md` | Profil und Skill-Matrix (belegt / teilweise / nicht belegt) – einzige Faktenquelle |
 | `01_Config/search_profile.yaml` | Rollen, Regionen, Gewichte, Schwellen, Titel-Filter, Segmente |

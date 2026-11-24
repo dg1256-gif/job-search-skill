@@ -28,6 +28,48 @@ def texts(path):
     return [cl.el_text(el) for _, el in cl.walk(docx.Document(str(path)).element.body)]
 
 
+class BuiltInTemplate(unittest.TestCase):
+    """The letter form shipped in assets/templates with the slot map from the default settings."""
+    SRC = ws.SCRIPTS.parent / "assets" / "templates" / "Anschreiben_Vorlage.docx"
+    PERSON = {"full_name": "Erika Mustermann", "city": "Musterstadt", "street": "Musterweg 1",
+              "postal_city": "12345 Musterstadt", "phone": "", "email": "erika@example.org"}
+
+    def setUp(self):
+        import shutil
+        import yaml
+        self.tpl = ws.ROOT / "00_Input" / "builtin.docx"
+        self.tpl.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(self.SRC, self.tpl)
+        shipped = yaml.safe_load((ws.SCRIPTS.parent / "assets" / "config" / "settings.yaml").read_text(encoding="utf-8"))
+        self.slots = shipped["templates"]["cover_letter_slots"]
+        self._settings = cl._settings
+        base = self._settings()
+        cl._settings = lambda: {**base, "person": {**base["person"], **self.PERSON}}
+
+    def tearDown(self):
+        cl._settings = self._settings
+
+    def test_build_refuses_open_letterhead(self):
+        with self.assertRaises(SystemExit):
+            cl.build({**copy.deepcopy(SPEC), "output": str(ws.ROOT / "03_Applications" / "x.docx")}, self.tpl, self.slots)
+
+    def test_letterhead_then_build(self):
+        report = cl.letterhead(self.tpl)
+        self.assertEqual(report["fehlt"], ["phone"])
+        head = texts(self.tpl)
+        self.assertEqual(head[0], "Erika Mustermann")
+        self.assertEqual(head[1], "Musterweg 1 · 12345 Musterstadt · erika@example.org")
+        self.assertEqual(cl.letterhead_open(self.tpl), [])
+        self.assertEqual(cl.letterhead(self.tpl)["geaendert"], [])
+        out = cl.build({**copy.deepcopy(SPEC), "output": str(ws.ROOT / "03_Applications" / "builtin_out.docx")},
+                       self.tpl, self.slots)
+        got = texts(out)
+        self.assertIn(SPEC["subject"], got)
+        self.assertIn(P1, got)
+        self.assertEqual(got[-1], "Erika Mustermann")
+        self.assertFalse([t for t in got if "Platzhaltertext" in t or "<" in t])
+
+
 class Letter(unittest.TestCase):
     def build(self, layout, name, **over):
         ws.write_settings(ws.ROOT, layout)

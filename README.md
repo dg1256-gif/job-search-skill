@@ -5,7 +5,7 @@ eine persönliche Jobsuche einrichtet und betreibt:
 
 - sucht täglich neue Stellen (Karriereseiten, Job-Alerts aus dem eigenen Postfach, Websuche)
 - bewertet sie gegen das eigene Profil und zeigt nur, was offen ist und passt
-- schreibt Anschreiben und Lebenslauf **in den eigenen Word-Vorlagen**, ohne deren Format zu ändern
+- schreibt Anschreiben in einer mitgelieferten Briefform und schneidet den eigenen Lebenslauf zu, ohne dessen Format zu ändern
 - prüft jeden Text automatisch mit einem eingebauten Humanizer
 - füllt Bewerbungsformulare im Browser aus und hält vor dem Absenden an
 - zeigt alles in einem Dashboard mit dem Knopf **„Job suche starten“**
@@ -27,8 +27,7 @@ cp -R job-search-skill/skills/jobsuche ~/.claude/skills/jobsuche
 ```
 
 (Windows: den Ordner `skills\jobsuche` nach `%USERPROFILE%\.claude\skills\jobsuche` kopieren.)
-Dann in Claude Code: `/jobsuche einrichten`. Der Assistent führt Schritt für Schritt durch
-Arbeitsordner, Profil, Vorlagen, Postfach, Dashboard und Zeitplan.
+Dann in Claude Code: `/jobsuche einrichten`.
 
 **Anderes Programm (Codex, Gemini, Grok …)**
 
@@ -38,6 +37,69 @@ python3 job-search-skill/skills/jobsuche/scripts/setup.py init --workspace ~/Job
 
 Das Programm im Ordner `~/Jobsuche` starten und schreiben: „Jobsuche einrichten“. Die
 Anleitung findet es über `AGENTS.md`. Einzelheiten: `skills/jobsuche/references/andere-agenten.md`.
+
+## Ablauf
+
+**Einmal einrichten** (`/jobsuche einrichten`, etwa 20 Minuten, unterbrechbar). Der Assistent
+fragt Schritt für Schritt:
+
+1. **Arbeitsordner:** wo die Jobsuche liegen soll (Vorschlag `~/Jobsuche`).
+2. **Lebenslauf:** in welchem Ordner dein Lebenslauf liegt (Word oder PDF). Daraus liest er
+   Name, Kontaktdaten und Werdegang und legt dein Profil an. Du liest es gegen und
+   korrigierst; nur was dort steht, darf später in einem Text behauptet werden.
+3. **Zielregionen:** wo du suchst (Städte, Regionen, Länder, Homeoffice).
+4. **Gehaltsvorstellung:** Zielgehalt und Untergrenze, bei mehreren Ländern je Region. Stellen
+   darunter werden aussortiert. Es wird keine Zahl für dich geschätzt.
+5. **Rollen und Arbeitgeber:** gesuchte Titel, Wunschfirmen, Ausschlüsse.
+6. **Postfach, Dashboard, Zeitplan:** siehe unten.
+
+Eine Vorlage für das Anschreiben brauchst du nicht: Die Briefform ist eingebaut, der
+Briefkopf wird mit deinen Angaben aus dem Lebenslauf gefüllt. Wer ein eigenes Layout will,
+kann seine Word-Datei hinterlegen.
+
+**Jeden Tag** (nach Zeitplan oder über den Knopf „Job suche starten“):
+
+1. Neue Stellen holen: Karriereseiten der Wunschfirmen, Job-Alerts aus dem Postfach, Websuche.
+2. Aussortieren (geschlossen, doppelt, ausgeschlossen, unter der Gehaltsgrenze) und den Rest
+   gegen dein Profil bewerten.
+3. Für die passenden Stellen ein Anschreiben schreiben, mit dem Humanizer prüfen und als
+   Word/PDF ablegen.
+4. Das Dashboard aktualisieren und kurz berichten.
+
+**Bewerben** (du entscheidest je Stelle):
+
+1. Im Dashboard die Stelle ansehen, das Anschreiben lesen und bei Bedarf ändern.
+2. `/jobsuche ausfuellen`: Der Assistent füllt das Formular im Browser aus. Anmelden und
+   CAPTCHAs machst du.
+3. Vor dem Absenden hält er an und zeigt, was eingetragen ist. Abgeschickt wird erst nach
+   deinem Ja zu genau dieser Bewerbung.
+4. Antworten der Firmen im Postfach ändern den Status im Dashboard.
+
+## Befehle
+
+| Befehl | Zweck |
+|---|---|
+| `/jobsuche einrichten` | Einrichtung, oder ein Teil: `einrichten mail`, `… suche`, `… zeitplan`, `… dashboard` |
+| `/jobsuche lauf` | Suchlauf jetzt starten |
+| `/jobsuche bewerte <URL>` | eine einzelne Stelle prüfen und bewerten |
+| `/jobsuche anschreiben <Stelle>` | Anschreiben für eine Stelle |
+| `/jobsuche ausfuellen` | Bewerbungsformular im Browser ausfüllen |
+| `/jobsuche dashboard` | Dashboard veröffentlichen, aktualisieren oder lokal starten |
+| `/jobsuche pruefen` | zeigt, was an der Einrichtung noch offen ist |
+
+Alle Befehle und Regeln: `skills/jobsuche/SKILL.md`.
+
+## Einstellungen
+
+Alles liegt im Arbeitsordner unter `01_Config/` und lässt sich von Hand oder im Gespräch ändern:
+
+| Datei | Inhalt |
+|---|---|
+| `settings.yaml` | Person, Postfach, Vorlagen, Dashboard, Zeitplan, Programm und Modell |
+| `candidate_profile.md` | dein Profil aus dem Lebenslauf (einzige Faktenquelle) |
+| `search_profile.yaml` | Rollen, Regionen, Ausschlüsse, Gewichte |
+| `salary_rules.yaml` | Zielgehalt und Untergrenze je Region |
+| `companies.yaml`, `exclusions.yaml` | Wunschfirmen und gesperrte Arbeitgeber |
 
 ## Postfach
 

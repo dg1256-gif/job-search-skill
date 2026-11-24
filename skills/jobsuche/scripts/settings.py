@@ -18,7 +18,8 @@ SETTINGS_FILE = ROOT / "01_Config" / "settings.yaml"
 PLACEHOLDER = re.compile(r"^<[^<>]+>$|<[A-ZÄÖÜ_ ]{3,}>")
 
 DEFAULTS = {
-    "person": {"full_name": "", "city": "", "timezone": "Europe/Berlin", "fixed_title": ""},
+    "person": {"full_name": "", "city": "", "street": "", "postal_city": "", "phone": "", "email": "",
+               "timezone": "Europe/Berlin", "fixed_title": ""},
     "language": {"default": "de"},
     "mail": {"mode": "none", "address": "", "alert_senders": [], "days_back": 2, "signature_lines": [],
              "imap": {"host": "", "port": 993, "user": "", "keyring_service": "jobsuche-imap",
@@ -77,7 +78,10 @@ def path(value):
 
 
 def open_placeholders(node=None, prefix=""):
-    node = load(raw=True) if node is None else node
+    if node is None:
+        if prefix:              # a null value inside the settings (e.g. a slot the template lacks)
+            return []
+        node = load(raw=True)
     found = []
     if isinstance(node, dict):
         for key, val in node.items():

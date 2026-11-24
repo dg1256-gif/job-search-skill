@@ -1,6 +1,7 @@
-# Anschreiben und Lebenslauf aus den eigenen Vorlagen
+# Anschreiben und Lebenslauf aus Vorlagen
 
-Beide Dokumente entstehen als **Kopie der Vorlage des Nutzers**. Ersetzt wird nur der Text in
+Beide Dokumente entstehen als **Kopie einer Vorlage**: das Anschreiben aus der mitgelieferten
+Form (oder einer eigenen des Nutzers), der Lebenslauf aus der Datei des Nutzers. Ersetzt wird nur der Text in
 festgelegten Feldern; Schrift, Abstände, Ränder, Kopf- und Kontaktblock bleiben, wie sie
 sind. Das erledigen `cover_letter.py` und `cv_tailor.py` und sie prüfen es auch. Nie ein
 Dokument selbst mit einer Bibliothek aufbauen oder die Vorlage bearbeiten.
@@ -8,6 +9,12 @@ Dokument selbst mit einer Bibliothek aufbauen oder die Vorlage bearbeiten.
 ## Vorlage einrichten (einmalig)
 
 ### Anschreiben
+
+Die mitgelieferte Vorlage ist fertig zugeordnet. Einmalig `$PY 08_Scripts/cover_letter.py
+letterhead` (füllt Name und Kontaktzeile aus `person`; leere Angaben fallen weg). Solange der
+Briefkopf Platzhalter enthält, verweigert `build`.
+
+**Eigene Vorlage** (nur auf Wunsch des Nutzers):
 
 1. `$PY 08_Scripts/cover_letter.py inspect` nummeriert alle Absätze der Vorlage mit ihrem
    Ort (`p:4`, `tbl:0:0:1` …).
@@ -33,9 +40,9 @@ Dokument selbst mit einer Bibliothek aufbauen oder die Vorlage bearbeiten.
 ### Probe
 
 Ein Test-Anschreiben für eine erfundene Musterfirma bauen (`build`, siehe unten, Ausgabe
-nach `07_Logs/`), den Nutzer die Datei neben seiner Vorlage öffnen lassen. Erst wenn er
-keinen Unterschied im Aussehen findet, gilt die Vorlage als eingerichtet. Die Testdatei
-danach löschen.
+nach `07_Logs/`) und prüfen, dass der Bau ohne Fehler durchläuft. Bei einer eigenen Vorlage
+den Nutzer die Datei daneben öffnen lassen: Erst wenn er keinen Unterschied im Aussehen
+findet, gilt sie als eingerichtet.
 
 ## Anschreiben schreiben
 

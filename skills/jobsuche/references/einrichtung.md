@@ -11,7 +11,7 @@ Du trägst die Antworten selbst in `01_Config/settings.yaml` ein (nur die betrof
 schreibst sie nie in eine Datei.** Nennt der Nutzer versehentlich eines im Chat: nicht
 verwenden, nicht wiederholen, und ihm raten, es beim Anbieter zu ändern.
 
-`/jobsuche einrichten <teil>` (mail, vorlagen, profil, zeitplan, dashboard, agent) wiederholt
+`/jobsuche einrichten <teil>` (mail, vorlagen, profil, suche, zeitplan, dashboard, agent) wiederholt
 nur diesen Teil.
 
 ## 0. Arbeitsordner
@@ -23,10 +23,20 @@ nur diesen Teil.
    führen. Das Skript legt die Ordner an, kopiert Skripte und Vorlagen und baut `.venv`.
 3. Ab jetzt im Arbeitsordner arbeiten. `$PY 08_Scripts/setup.py check` zeigt die offenen Punkte.
 
-## 1. Person
+## 1. Lebenslauf und Person
 
-Name, Wohnort (für die Datumszeile im Anschreiben), Zeitzone → Abschnitt `person`.
-Sprache der Berichte → `language.default`.
+Alles über den Nutzer kommt aus seinem Lebenslauf; er tippt nichts ab.
+
+1. Nach dem Ordner fragen, in dem sein Lebenslauf liegt (Word, PDF oder beides). Die Dateien
+   dort lesen und nach `00_Input/Lebenslauf/` kopieren; die Originale bleiben unberührt.
+   Liegen mehrere Fassungen im Ordner, fragen, welche gilt. Pfade → `templates.cv` (Word, je
+   Sprache) und `templates.cv_pdf`.
+2. Aus dem Lebenslauf lesen und eintragen → Abschnitt `person`: Name, Wohnort (`city`, für
+   die Datumszeile), Straße (`street`), PLZ und Ort (`postal_city`), Telefon, Mailadresse.
+   Dem Nutzer die gelesenen Angaben in einer Zeile zeigen und bestätigen lassen. Was im
+   Lebenslauf fehlt oder nicht in den Briefkopf soll, bleibt leer.
+3. Zeitzone → `person.timezone`, Sprache der Berichte → `language.default` (nur fragen, wenn
+   sie von der Vorgabe abweichen könnten).
 
 ## 2. Programm und Modell
 
@@ -36,18 +46,24 @@ Abschnitt `agent`. Leeres `model` heißt: Voreinstellung des Programms. Ein klei
 `helper_model` für die Recherche spart am meisten. Details und der Probelauf des Aufrufs:
 `references/andere-agenten.md`.
 
-## 3. Unterlagen und Vorlagen
+## 3. Anschreiben-Form und PDF
 
-1. Der Nutzer legt seinen Lebenslauf (Word, dazu wenn vorhanden als PDF) nach
-   `00_Input/Lebenslauf/` und ein eigenes, fertiges Anschreiben als Word-Datei nach
-   `00_Input/Anschreiben_Referenz/`. Dieses Anschreiben ist die Vorlage: neue Anschreiben
-   sehen genauso aus. Pfade in `templates` eintragen.
-2. Felder zuordnen: `references/anschreiben-cv.md`, Abschnitt „Vorlage einrichten“. Dem
-   Nutzer den Vorschlag zeigen und bestätigen lassen.
-3. PDF: `$PY 08_Scripts/docs_pdf.py check`. Ohne Word und ohne LibreOffice entstehen nur
+Die Form des Anschreibens ist mitgeliefert (`00_Input/Anschreiben_Referenz/Anschreiben_Vorlage.docx`,
+Felder in `templates.cover_letter_slots` schon zugeordnet). Der Nutzer wird nicht nach einer
+Vorlage gefragt und muss sie nicht öffnen.
+
+1. `$PY 08_Scripts/cover_letter.py letterhead` trägt Name und Kontaktzeile aus `person` in
+   den Briefkopf ein. Nach einer Änderung an `person` erneut ausführen geht nur mit frischer
+   Vorlage: die Datei löschen, `setup.py update`, dann `letterhead`.
+2. PDF: `$PY 08_Scripts/docs_pdf.py check`. Ohne Word und ohne LibreOffice entstehen nur
    Word-Dateien; dann LibreOffice empfehlen oder `documents.pdf_engine: "none"` setzen.
-4. Probe: ein Test-Anschreiben bauen (Abschnitt „Probe“ dort) und den Nutzer die Datei
-   öffnen lassen: Sieht sie aus wie seine Vorlage? Erst dann weiter.
+3. Die Vorlage nutzt die freie Schrift „Poppins“. Ist sie nicht installiert, ersetzt Word sie
+   durch eine andere; das dem Nutzer einmal sagen (Download bei Google Fonts).
+4. Nur wenn der Nutzer von sich aus ein eigenes Layout will: seine Word-Datei nach
+   `00_Input/Anschreiben_Referenz/` legen, Pfad in `templates.cover_letter`, Felder neu
+   zuordnen (`references/anschreiben-cv.md`, „Eigene Vorlage“).
+5. Zugeschnittener Lebenslauf (freiwillig, nur mit Word-Lebenslauf): Felder zuordnen nach
+   `references/anschreiben-cv.md`. Ohne Zuordnung wird der Lebenslauf unverändert beigelegt.
 
 ## 4. Profil
 
@@ -64,13 +80,20 @@ Abschnitt `agent`. Leeres `model` heißt: Voreinstellung des Programms. Ein klei
 
 ## 5. Suche
 
-Im Gespräch klären und eintragen:
+Zwei Fragen stellst du immer ausdrücklich, jede für sich:
 
-- `search_profile.yaml`: gesuchte Rollen und Titel, Regionen und Orte, Homeoffice, was
-  ausgeschlossen ist (Befristung, Zeitarbeit, Branchen), Gewichte und Schwellen (Vorgaben
+1. **Zielregionen:** In welchen Regionen, Städten oder Ländern sucht er, und wie weit pendelt
+   er oder zieht er um? Homeoffice ja/nein/teilweise. → `search_profile.yaml` (Regionen,
+   Orte) und je Region ein Recherche-Auftrag (siehe unten).
+2. **Gehaltsvorstellung:** Zielgehalt und Untergrenze (brutto im Jahr), bei mehreren Ländern
+   je Region mit Währung. → `salary_rules.yaml`. Keine Zahl vorschlagen, die er nicht genannt
+   hat; will er keine nennen, bleibt die Prüfung aus und du sagst ihm das.
+
+Danach im Gespräch klären und eintragen:
+
+- `search_profile.yaml`: gesuchte Rollen und Titel (Vorschlag aus dem Profil, er bestätigt),
+  was ausgeschlossen ist (Befristung, Zeitarbeit, Branchen), Gewichte und Schwellen (Vorgaben
   stehen lassen, wenn er keine Meinung hat), optionale Suchspuren (`segments`).
-- `salary_rules.yaml`: Zielgehalt und Untergrenze je Region. Keine Zahl vorschlagen, die er
-  nicht genannt hat.
 - `companies.yaml`: Wunsch-Arbeitgeber. Für jeden die Karriereseite öffnen und das
   Bewerbungssystem bestimmen (Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Personio …);
   nur eintragen, was `$PY 08_Scripts/jobsearch.py fetch` danach ohne Fehler abruft.

@@ -70,6 +70,7 @@ def sync(skill, ws, first):
 
     run(skill / "scripts", ws / "08_Scripts", True)                       # code always follows the skill
     run(skill / "assets" / "config", ws / "01_Config", False)             # the user's config is never overwritten
+    run(skill / "assets" / "templates", ws / "00_Input" / "Anschreiben_Referenz", False)   # built-in letter form
     run(skill / "assets" / "research_briefs", ws / "09_Documentation" / "research_briefs", False)
     run(skill / "assets" / "dashboard", ws / "10_Dashboard", True)
     run(skill / "assets" / "schedule", ws / "08_Scripts" / "schedule", True)
@@ -182,7 +183,15 @@ def cmd_check(args):
 
     t = cfg["templates"]
     letter = settings.path(t["cover_letter"])
-    add("Vorlagen", letter and letter.exists(), "Anschreiben-Vorlage vorhanden", "Datei nach 00_Input/Anschreiben_Referenz/ legen")
+    add("Vorlagen", letter and letter.exists(), "Anschreiben-Vorlage vorhanden", "setup.py update stellt die mitgelieferte Vorlage wieder her")
+    if letter and letter.exists():
+        import zipfile
+        try:
+            with zipfile.ZipFile(letter) as z:
+                head_open = "&lt;VORNAME NACHNAME&gt;" in z.read("word/document.xml").decode("utf-8", "ignore")
+        except (OSError, KeyError, zipfile.BadZipFile):
+            head_open = False
+        add("Vorlagen", not head_open, "Briefkopf der Anschreiben-Vorlage ausgefüllt", "person in settings.yaml füllen, dann cover_letter.py letterhead")
     add("Vorlagen", bool(t["cover_letter_slots"]), "Felder der Anschreiben-Vorlage zugeordnet", "cover_letter.py inspect")
     cvs = [settings.path(v) for v in t["cv"].values() if v]
     add("Vorlagen", cvs and all(p.exists() for p in cvs), "Lebenslauf-Vorlage(n) vorhanden", "Datei nach 00_Input/Lebenslauf/ legen")

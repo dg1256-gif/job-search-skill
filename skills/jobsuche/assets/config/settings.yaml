@@ -7,6 +7,10 @@
 person:
   full_name: "<VORNAME NACHNAME>"      # so steht der Name in Dokument-Eigenschaften und Dateinamen
   city: "<WOHNORT>"                    # Ort in der Datumszeile des Anschreibens
+  street: ""                           # Straße und Hausnummer für den Briefkopf (leer = weglassen)
+  postal_city: ""                      # PLZ und Ort für den Briefkopf
+  phone: ""                            # Telefon für den Briefkopf (leer = weglassen)
+  email: ""                            # Mailadresse für den Briefkopf
   timezone: "Europe/Berlin"            # IANA-Zeitzone für Datum und Zeitplan
   fixed_title: ""                      # optional: Berufsbezeichnung, die in jedem Anschreiben wörtlich stehen muss
 
@@ -35,8 +39,19 @@ mail:
   days_back: 2                         # wie viele Tage Alert-Mails ein Lauf zurückschaut
 
 templates:
-  cover_letter: "00_Input/Anschreiben_Referenz/<DEINE_ANSCHREIBEN_VORLAGE>.docx"
-  cover_letter_slots: {}               # wird von `cover_letter.py inspect` + Assistent gefüllt (welcher Absatz ist was)
+  # Mitgelieferte Vorlage; der Briefkopf wird mit `cover_letter.py letterhead` aus `person` gefüllt.
+  # Eigene Vorlage: Pfad ersetzen und die Felder mit `cover_letter.py inspect` neu zuordnen.
+  cover_letter: "00_Input/Anschreiben_Referenz/Anschreiben_Vorlage.docx"
+  cover_letter_slots:                  # welcher Absatz der Vorlage ist was
+    date: "tbl:0:0:1:0"
+    date_format: {de: "{city}, {d}. {month} {yyyy}", en: "{city}, {d} {month} {yyyy}"}
+    recipient: null
+    subject: "p:2"
+    salutation: "p:3"
+    body_first: "p:4"
+    body_last: "p:8"
+    closing: "p:9"
+    signature: "p:10"
   cover_letter_leftovers: []           # optional: Wörter aus dem alten Brief der Vorlage (z. B. dessen Firmenname), die in keinem neuen Anschreiben stehen dürfen
   cv:
     de: "00_Input/Lebenslauf/<DEIN_LEBENSLAUF_DE>.docx"

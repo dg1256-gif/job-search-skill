@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and validate a cover letter .docx from the user's own template letter.
+"""Build and validate a cover letter .docx from a template letter (the shipped one or the user's own).
 
 The template is copied and only the text of its content slots is replaced, so styles, section
 settings, fonts, spacing and the name/contact block stay exactly as in the template. Which
@@ -7,6 +7,7 @@ paragraph is which slot is stored in 01_Config/settings.yaml (templates.cover_le
 
   python 08_Scripts/cover_letter.py inspect [--template file.docx]      numbered paragraphs with locators
   python 08_Scripts/cover_letter.py suggest-slots [--template file.docx] proposed slot map (to confirm)
+  python 08_Scripts/cover_letter.py letterhead                           name and contact line from `person`
   python 08_Scripts/cover_letter.py build --spec letter.json
   python 08_Scripts/cover_letter.py validate --docx out.docx --spec letter.json
 
@@ -422,12 +423,52 @@ def clean_package(path, spec, body_text):
     tmp.replace(path)
 
 
+LETTERHEAD = {"<VORNAME NACHNAME>": "full_name", "<STRASSE HAUSNUMMER>": "street", "<PLZ ORT>": "postal_city",
+              "<TELEFON>": "phone", "<E-MAIL>": "email"}
+
+
+def letterhead_open(path):
+    """Locators of paragraphs in which the built-in template still holds a letterhead placeholder."""
+    document = docx.Document(str(path))
+    return [loc for loc, el in walk(document.element.body) if any(k in el_text(el) for k in LETTERHEAD)]
+
+
+def letterhead(template=None):
+    """Fill name and contact line of the built-in template from `person` in the settings. Only
+    paragraphs that hold a placeholder change; a contact part without a value is left out."""
+    path = template_path(template)
+    person = _settings()["person"]
+    if not person.get("full_name"):
+        raise SystemExit("person.full_name in 01_Config/settings.yaml fehlt; ohne Namen kein Briefkopf.")
+    document = docx.Document(str(path))
+    changed = []
+    for loc, el in walk(document.element.body):
+        text = el_text(el)
+        if not any(k in text for k in LETTERHEAD):
+            continue
+        parts = []
+        for part in text.split(" · "):
+            for token, key in LETTERHEAD.items():
+                part = part.replace(token, str(person.get(key) or "").strip())
+            if part.strip():
+                parts.append(part.strip())
+        set_text(el, " · ".join(parts))
+        changed.append(loc)
+    if changed:
+        document.save(str(path))
+    return {"template": str(path), "geaendert": changed,
+            "fehlt": [k for k in ("street", "postal_city", "phone", "email") if not person.get(k)]}
+
+
 def build(spec, template=None, slots=None):
     missing = [k for k in ("company", "role", "language", "salutation", "paragraphs") if not spec.get(k)]
     if missing:
         raise SystemExit("Im Auftrag fehlen Angaben: " + ", ".join(missing))
     lang = spec["language"]
     slots, template = slot_map(slots), template_path(template)
+    if letterhead_open(template):
+        raise SystemExit("Der Briefkopf der Vorlage ist noch nicht ausgefüllt: person in 01_Config/settings.yaml "
+                         "füllen, dann `cover_letter.py letterhead` ausführen.")
     out = Path(spec.get("output") or default_output(spec))
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(template, out)
@@ -878,10 +919,13 @@ def main():
     v = sub.add_parser("validate")
     v.add_argument("--docx", required=True)
     v.add_argument("--spec", required=True)
-    for name in ("inspect", "suggest-slots"):
+    for name in ("inspect", "suggest-slots", "letterhead"):
         i = sub.add_parser(name)
         i.add_argument("--template")
     args = ap.parse_args()
+    if args.cmd == "letterhead":
+        print(json.dumps(letterhead(args.template), ensure_ascii=False, indent=1))
+        return
     if args.cmd in ("inspect", "suggest-slots"):
         path = template_path(args.template)
         result = inspect(path) if args.cmd == "inspect" else suggest_slots(path)
