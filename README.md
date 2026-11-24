@@ -162,9 +162,7 @@ Schwachstellen melden: siehe `SECURITY.md`.
 
 Arbeitsordner, Lebenslauf, Profil und Anschreiben liegen auf dem eigenen Rechner. Das gewählte
 Programm (Claude Code, Codex, Gemini, Grok) liest Profil und Stellenanzeigen aber, um zu bewerten
-und zu schreiben; diese Inhalte gehen dabei an den Anbieter des Modells. Ein Container ändert
-daran nichts. Wer das nicht will, trägt in `agent.command` ein lokal laufendes Modell ein
-(ungetestet) oder nutzt nur die Skripte. Mit dem Dashboard als claude.ai-Artifact und mit dem
+und zu schreiben; diese Inhalte gehen dabei an den Anbieter des Modells. Mit dem Dashboard als claude.ai-Artifact und mit dem
 Cloud-Zeitplan liegen Stellenliste und Unterlagen zusätzlich bei Anthropic bzw. im eigenen
 privaten Git-Repository; das lokale Dashboard und der lokale Zeitplan vermeiden beides.
 
